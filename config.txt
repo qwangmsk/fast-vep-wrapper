@@ -6,7 +6,6 @@ vep_path	 = /opt/common/CentOS_6/vep/v79
 vep_data	 = /opt/common/CentOS_6/vep/v79
 ref_fasta	 = /opt/common/CentOS_6/vep/v79/homo_sapiens/79_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
 custom_enst_file = /opt/common/CentOS_6/vcf2maf/v1.5.3/data/isoform_overrides_at_mskcc
-tmp_dir	 	 = /home/wangq/portal-tmp-dir	
 vep_forks  	 = 4
 
 ###########################################################################
