@@ -1,14 +1,14 @@
 fast-vep-wrapper
 ================
 
-This script aims to use VEP to quickly annotate variants stored in large MAF files. Typical scenario to run this program is to annotate MAF files containing variants detected in thousands of or more samples. 
+This project aims to use VEP to quickly annotate variants stored in large MAF files. Typical scenario to run fast-vep-wrapper.pl is to annotate MAF files containing somatic variants from thousands of or more tumor samples. 
 
 Installation
 ------------
 
-This script requires users to install VEP and vcf2maf (https://github.com/ckandoth/vcf2maf).
+The script requires users to install VEP and vcf2maf (https://github.com/ckandoth/vcf2maf).
 
-To improve portability, the script utilizes a configuration file (default name: config.txt; default directory: the same directory as this program) to store paths of vep, ref_fasta, and vcf2maf, together with other parameters. Please see example config.txt for detail.
+To improve portability, it utilizes a configuration file to store paths of vep, ref_fasta, and vcf2maf, together with other parameters. In default settings (config.txt as default file name; the same path as this program as default directory to store the configuration file), user does not need to specify the configuration file in command line.  
 
 Method
 ------
