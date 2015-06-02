@@ -1,0 +1,20 @@
+###########################################################################
+#<vcf2maf> - variables used by fast-vep-wrapper.pl to run vcf2maf
+
+vcf2maf_script   = /home/wangq/projects/vep/vcf2maf/maf2maf.pl
+vep_path	 = /opt/common/CentOS_6/vep/v79
+vep_data	 = /opt/common/CentOS_6/vep/v79
+ref_fasta	 = /opt/common/CentOS_6/vep/v79/homo_sapiens/79_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
+custom_enst_file = /opt/common/CentOS_6/vcf2maf/v1.5.3/data/isoform_overrides_at_mskcc
+tmp_dir	 	 = /home/wangq/portal-tmp-dir	
+vep_forks    	 = 4
+
+###########################################################################
+#<run_vep> - variables used by run-vep-wrapper.pl
+
+#vep_wrap_script = /opt/common/CentOS_6/vcf2maf/v1.5.3/maf2maf.pl
+vep_wrap_script  = /home/wangq/projects/vep/fast-vep-wrapper.pl
+depth_def_file	 = /home/wangq/projects/vep/depth_cols.txt
+input_filename	 = data_mutations_extended.txt
+output_filename	 = data_mutations_vep.txt
+use_cluster	 = yes
