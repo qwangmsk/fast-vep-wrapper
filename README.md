@@ -8,7 +8,7 @@ Installation
 
 The script requires users to install VEP and vcf2maf (https://github.com/ckandoth/vcf2maf).
 
-To improve portability, it utilizes a configuration file to store paths of vep, ref_fasta, and vcf2maf, together with other parameters. In default settings (config.txt as default file name; the same path as this program as default directory to store the configuration file), user does not need to specify the configuration file in command line.  
+To improve portability, it utilizes a configuration file to store paths of vep, ref_fasta, and vcf2maf, together with other parameters. By default, the script uses a file named config.txt in the same directory as fast-vep-wrapper.pl as configuration file, unless user specifies a configuration file explicitly in command line.  
 
 Method
 ------
