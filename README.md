@@ -1,29 +1,27 @@
 fast-vep-wrapper
 ================
 
-This project aims to use VEP to quickly and conveniently annotate variants stored in large MAF files. Typical scenario to run [fast-vep-wrapper.pl]() is to annotate MAF files containing somatic variants from thousands of or more tumor samples. 
+This project aims to use VEP to quickly annotate variants stored in large MAF files. Typical scenario to run fast-vep-wrapper.pl is to annotate MAF files containing somatic variants from thousands of or more tumor samples. 
 
 Installation
 ------------
 
-The script requires users to install [VEP](http://www.ensembl.org/info/docs/tools/vep/index.html) and [vcf2maf](https://github.com/ckandoth/vcf2maf).
+The script requires users to install VEP and vcf2maf (https://github.com/ckandoth/vcf2maf).
 
-To improve portability, it utilizes a configuration file to store paths of vep, ref_fasta, and [vcf2maf](https://github.com/ckandoth/vcf2maf), together with other parameters. By default, the script uses a file named config.txt in the same directory as [fast-vep-wrapper.pl]() as configuration file, unless user specifies a configuration file explicitly in command line.  
+To improve portability, it utilizes a configuration file to store paths of vep, ref_fasta, and vcf2maf, together with other parameters. By default, the script uses a file named config.txt in the same directory as fast-vep-wrapper.pl as configuration file, unless user specifies a configuration file explicitly in command line.  
 
-Description
------------
+Method
+------
 
-[fast-vep-wrapper.pl]() extracts unique variants from input MAF file. Here, 'unique' means unique combination of Chromosome, Start_Position, Reference_Allele and Tumor_Allele. If an annotated MAF file is provided, variants in the annotated MAF will not be re-annotated. Only new variants in the MAF file are processed (using [vcf2maf](https://github.com/ckandoth/vcf2maf)). For new variants, 'TUMOR' and 'NORMAL' are used as'Tumor_Sample_Barcode' and 'Matched_Norm_Sample_Barcode' to reduce multithreading overhead.
-
-[fast-vep-wrapper.pl]() is derived from [vcf2maf](https://github.com/ckandoth/vcf2maf). By re-using previous annotation and improving parallel efficiency, it enhances annotation efficiency that is lacking in [vcf2maf](https://github.com/ckandoth/vcf2maf). The speed of [fast-vep-wrapper.pl]() is linear to the number of CPUs (or vep_forks). For large MAF files and when using multiple CPUs, it can easily reduce computation time from hours to minutes.
+The script extracts unique variants from input MAF file. Here, 'unique' means unique combination of Chromosome, Start_Position, Reference_Allele and Tumor_Allele. If an annotated MAF file is provided, variants in the annotated MAF will not be re-annotated. Only new variants in the MAF file are processed (using vcf2maf: https://github.com/ckandoth/vcf2maf). For new variants, 'TUMOR' and 'NORMAL' are used as'Tumor_Sample_Barcode' and 'Matched_Norm_Sample_Barcode' to reduce multithreading overhead.
 
 
-Another script file [run-vep-wrapper.pl]() provides application-level wrapper functions. I mainly use it to test [fast-vep-wrapper.pl](). 
+Derived from vcf2maf, this program is designed to enhance annotation efficiency that is lacking in vcf2maf. By reusing previous annotation and improving parallel efficiency, it reduces time for annotating large MAF files from hours to minutes.
 
 Acknowledgements
 ----------------
 
-Thank Cyriac Kandoth, Frederick Criscuolo, Onur Sumer, and Sumit Middha for insightful suggestions and helpful discussion
+Thank Sumit Middha, Frederick Criscuolo, and Cyriac Kandoth for insightful suggestions and helpful discussion
 
 Authors
 -------
