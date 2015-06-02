@@ -21,7 +21,7 @@ Derived from vcf2maf, this program is designed to enhance annotation efficiency 
 Acknowledgements
 ----------------
 
-Thank Sumit Middha, Frederick Criscuolo, and Cyriac Kandoth for suggestion and discussion
+Thank Sumit Middha, Frederick Criscuolo, and Cyriac Kandoth for insightful suggestions and helpful discussion
 
 Authors
 -------
