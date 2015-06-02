@@ -103,12 +103,12 @@ my %config;
 map{ chomp; /^\s*([^=\s]+)\s*=\s*(.*)$/; $config{$1} = $2 if (defined $1 && defined $2) } `egrep -v \"^#\" $config_file`;
 
 my $maf2maf= $config{ 'vcf2maf_script' };
-$custom_enst_file   = $config{ 'custom_enst_file' }     if ( !$custom_enst_file  && defined $config{ 'custom_enst_file' } );
-$vep_path           = $config{ 'vep_path' }             if ( !$vep_path  && defined $config{ 'vep_path' } );
-$vep_data           = $config{ 'vep_data' }             if ( !$vep_data  && defined $config{ 'vep_data' } );
-$ref_fasta          = $config{ 'ref_fasta' }            if ( !$ref_fasta && defined $config{ 'ref_fasta' } );
-$vep_forks          = $config{ 'vep_forks' }            if ( !$vep_forks && defined $config{ 'vep_forks' } );
-$tmp_dir            = $config{ 'tmp_dir' }              if ( !$tmp_dir   && defined $config{ 'tmp_dir' } );
+$custom_enst_file = $config{ 'custom_enst_file' } if ( !$custom_enst_file  && defined $config{ 'custom_enst_file' } );
+$vep_path  = $config{ 'vep_path' }   if ( !$vep_path  && defined $config{ 'vep_path' } );
+$vep_data  = $config{ 'vep_data' }   if ( !$vep_data  && defined $config{ 'vep_data' } );
+$ref_fasta = $config{ 'ref_fasta' }  if ( !$ref_fasta && defined $config{ 'ref_fasta' } );
+$vep_forks = $config{ 'vep_forks' }  if ( !$vep_forks && defined $config{ 'vep_forks' } );
+$tmp_dir   = $config{ 'tmp_dir' }    if ( !$tmp_dir   && defined $config{ 'tmp_dir' } );
 
 # Run maf2maf.pl to annotate variants
 if ( $var_count > 0 ) {
@@ -371,8 +371,8 @@ __DATA__
 =head1 SYNOPSIS
  
  perl fast-vep-wrapper.pl --help
- perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf  # Suppose configuration file config.txt is in predefined path
- perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf --config-file /home/someone/bin/fast-vep-runner/config.txt
+ perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf  # Suppose configuration file config.txt is in correct path
+ perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf --config-file /home/someone/bin/config-luna.txt
  
 =head1 OPTIONS
  
@@ -386,20 +386,19 @@ __DATA__
  --nrm-depth-col  Name of MAF column for read depth in normal BAM [n_depth]
  --nrm-rad-col    Name of MAF column for reference allele depth in normal BAM [n_ref_count]
  --nrm-vad-col    Name of MAF column for variant allele depth in normal BAM [n_alt_count]
- --retain-cols    Comma-delimited list of columns to retain from the input MAF [Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Matched_Norm_Sample_UUID]
+ --retain-cols    Comma-delimited list of columns to retain from the input MAF
  --custom-enst    List of custom ENST IDs that override canonical selection
  --vep-path       Folder containing variant_effect_predictor.pl [/ssd-data/cmo/opt/vep/v79]
  --vep-data       VEP's base cache/plugin directory [/ssd-data/cmo/opt/vep/v79]
  --vep-forks      Number of forked processes to use when running VEP [4]
  --ref-fasta      Reference FASTA file [/ssd-data/cmo/opt/vep/v79/homo_sapiens/79_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa]
- --config-file    A configuration file to store paths of vep, ref_fasta, and maf2maf. Default is config.txt in the same directory as this script. If not provided, will look for it in current directory and home directory.
+ --config-file    A configuration file to store paths of vep, ref_fasta, and maf2maf.
  --help           Print a brief help message and quit
  --man            Print the detailed manual
  
 =head1 DESCRIPTION
  
- This script speeds up MAF file annotation using VEP. It extracts unique variants from input MAF file. Here, 'unique' means unique combination of Chromosome, Start_Position, Reference_Allele and Tumor_Allele. If an annotated MAF file is provided, variants in the annotated MAF will not be re-annotated. Only new variants in the MAF file are processed (using vcf2maf: https://github.com/ckandoth/vcf2maf). For new variants, 'TUMOR' and 'NORMAL' are used as'Tumor_Sample_Barcode' and 'Matched_Norm_Sample_Barcode' to reduce multithreading overhead.
- Derived from vcf2maf (https://github.com/ckandoth/vcf2maf), this script aims to improve annotation efficiency that is lacking in vcf2maf. By reusing previous annotation and improving parallel efficiency, this script reduces time for annotating large MAF files from hours to minutes.
+ This script speeds up MAF file annotation using VEP.
  
 =head1 AUTHORS
  
@@ -407,6 +406,6 @@ __DATA__
 
 =head1 ACKNOWLEDGEMENTS
  
- Thank Sumit Middha, Frederick Criscuolo, and Cyriac Kandoth for suggestion and discussion
+ Thank Sumit Middha, Frederick Criscuolo, and Cyriac Kandoth for insightful suggestions and helpful discussion
  
 =cut
