@@ -17,7 +17,9 @@ Description
 
 [fast-vep-wrapper.pl]() is derived from [vcf2maf](https://github.com/ckandoth/vcf2maf). By re-using previous annotation and improving parallel efficiency, it enhances annotation efficiency that is lacking in [vcf2maf](https://github.com/ckandoth/vcf2maf). The speed of [fast-vep-wrapper.pl]() is linear to the number of CPUs (or vep_forks). For large MAF files and when using multiple CPUs, it can easily reduce computation time from hours to minutes.
 
-Another script file [run-vep-wrapper.pl]() provides application-level wrapper functions. I mainly use it to test [fast-vep-wrapper.pl](). 
+Another script file [run-vep-wrapper.pl]() provides application-level wrapper functions. I mainly use it to test [fast-vep-wrapper.pl](). I also use [run-vep-wrapper.pl]() to run [maf2maf.pl](https://github.com/ckandoth/vcf2maf) in order to compare output of [fast-vep-wrapper.pl]() with that of [maf2maf.pl](https://github.com/ckandoth/vcf2maf).
+
+Finally, this project includes a human currated text file, [depth_cols.txt](). This file contains read depth-related column names (1st column) showing up repeatitively in various MAF files. We manually mapped depth-related columns to [vcf2maf](https://github.com/ckandoth/vcf2maf) arguments (2nd column). When parsing MAF file header, [run-vep-wrapper.pl]() looks for words in the 1st column of [depth_cols.txt]() and then automatically constructs correct command arguments to run [fast-vep-wrapper.pl]() / [maf2maf.pl](https://github.com/ckandoth/vcf2maf). 
 
 Acknowledgements
 ----------------
