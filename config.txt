@@ -16,5 +16,5 @@ vep_wrap_script  = /home/wangq/projects/vep/fast-vep-wrapper.pl
 depth_def_file	 = /home/wangq/projects/vep/depth_cols.txt
 input_filename	 = data_mutations_extended.txt
 output_filename	 = data_mutations_extended.vep.txt
-annotated_maf	 = data_mutations_vep.txt
+#annotated_maf	 = data_mutations_vep.txt
 use_cluster	 = yes
