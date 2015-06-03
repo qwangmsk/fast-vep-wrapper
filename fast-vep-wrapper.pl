@@ -65,7 +65,19 @@ pod2usage( -verbose => 1, -input => \*DATA, -exitval => 0 ) if( $help );
 pod2usage( -verbose => 2, -input => \*DATA, -exitval => 0 ) if( $man );
 
 
-( defined $input_maf ) or die "ERROR: input-maf is defined!\n";
+( defined $input_maf ) or die "ERROR: input-maf is not defined!\n";
+
+
+# Check configuration file
+if ($config_file) {
+    ( -e $config_file ) or die "ERROR: The configuration file $config_file does not exist\n";
+}else{
+    $config_file = "$FindBin::Bin/config.txt";
+    if (!-e $config_file){
+        die "ERROR: Could not find configuration file config.txt in home/working/program directory\n" if (!-e 'config.txt' && !-e $ENV{"HOME"}.'/config.txt');
+        $config_file = (-e $ENV{"HOME"}.'/config.txt') ? $ENV{"HOME"}.'/config.txt' : 'config.txt'
+    }
+}
 
 
 ################################# Filter out duplicate variants ##########################################
@@ -82,33 +94,25 @@ $maf_fh->close;
 if( $var_count == 0 ) {
     warn "WARNING: 0 unannotated variants in input MAF\n";
     `rm "$input_maf.uniq"`;
+} else {
+    warn "WARNING: $var_count variants in input MAF will be annotated\n";
 }
 %mutations = ();
 
-######################################## Run maf2maf ####################################################
 
-# Check configuration file
-if ($config_file) {
-    ( -e $config_file ) or die "ERROR: The configuration file $config_file does not exist\n";
-}else{
-    $config_file = "$FindBin::Bin/config.txt";
-    if (!-e $config_file){
-        die "ERROR: Could not find configuration file config.txt in home/working/program directory\n" if (!-e 'config.txt' && !-e $ENV{"HOME"}.'/config.txt');
-        $config_file = (-e $ENV{"HOME"}.'/config.txt') ? $ENV{"HOME"}.'/config.txt' : 'config.txt'
-    }
-}
+######################################## Run maf2maf ####################################################
 
 # Read configuration file
 my %config;
 map{ chomp; /^\s*([^=\s]+)\s*=\s*(.*)$/; $config{$1} = $2 if (defined $1 && defined $2) } `egrep -v \"^#\" $config_file`;
 
 my $maf2maf= $config{ 'vcf2maf_script' };
-$custom_enst_file = $config{ 'custom_enst_file' } if ( !$custom_enst_file  && defined $config{ 'custom_enst_file' } );
-$vep_path  = $config{ 'vep_path' }   if ( !$vep_path  && defined $config{ 'vep_path' } );
-$vep_data  = $config{ 'vep_data' }   if ( !$vep_data  && defined $config{ 'vep_data' } );
-$ref_fasta = $config{ 'ref_fasta' }  if ( !$ref_fasta && defined $config{ 'ref_fasta' } );
-$vep_forks = $config{ 'vep_forks' }  if ( !$vep_forks && defined $config{ 'vep_forks' } );
-$tmp_dir   = $config{ 'tmp_dir' }    if ( !$tmp_dir   && defined $config{ 'tmp_dir' } );
+$custom_enst_file = $config{ 'custom_enst_file' } if ( !$custom_enst_file  && exists $config{ custom_enst_file } );
+$vep_path  = $config{ vep_path }   if ( !$vep_path  && exists $config{ vep_path } );
+$vep_data  = $config{ vep_data }   if ( !$vep_data  && exists $config{ vep_data } );
+$ref_fasta = $config{ ref_fasta }  if ( !$ref_fasta && exists $config{ ref_fasta } );
+$vep_forks = $config{ vep_forks }  if ( !$vep_forks && exists $config{ vep_forks } );
+$tmp_dir   = $config{ tmp_dir }    if ( !$tmp_dir   && exists $config{ tmp_dir } );
 
 # Run maf2maf.pl to annotate variants
 if ( $var_count > 0 ) {
@@ -130,7 +134,9 @@ if ( $var_count > 0 ) {
     $maf2maf_cmd .= " --ref-fasta $ref_fasta"           if ( $ref_fasta );
     
     system( $maf2maf_cmd ) == 0  or die "\nERROR: Failed to run maf2maf!\nCommand: $maf2maf_cmd\n";
+    `rm $input_maf.uniq`;
 }
+
 
 ###################################### Assign Annotation ##################################################
 
@@ -154,38 +160,34 @@ while( my $line = $input_maf_fh->getline ) {
         map{ my $c = lc; $input_maf_col_idx{$c} = $idx; ++$idx } @cols;
         
         @kept_cols= qw( tumor_sample_barcode matched_norm_sample_barcode );
-        push (@kept_cols, lc( $tum_depth_col )) if( $tum_depth_col && defined $input_maf_col_idx{lc $tum_depth_col} );
-        push (@kept_cols, lc( $nrm_depth_col )) if( $nrm_depth_col && defined $input_maf_col_idx{lc $nrm_depth_col} );
-        push (@kept_cols, lc( $tum_rad_col ))   if( $tum_rad_col   && defined $input_maf_col_idx{lc $tum_rad_col} );
-        push (@kept_cols, lc( $tum_vad_col ))   if( $tum_vad_col   && defined $input_maf_col_idx{lc $tum_vad_col} );
-        push (@kept_cols, lc( $nrm_rad_col ))   if( $nrm_rad_col   && defined $input_maf_col_idx{lc $nrm_rad_col} );
-        push (@kept_cols, lc( $nrm_vad_col ))   if( $nrm_vad_col   && defined $input_maf_col_idx{lc $nrm_vad_col} );
+        push (@kept_cols, lc( $tum_depth_col )) if( $tum_depth_col && defined $input_maf_col_idx{lc( $tum_depth_col )} );
+        push (@kept_cols, lc( $nrm_depth_col )) if( $nrm_depth_col && defined $input_maf_col_idx{lc( $nrm_depth_col )} );
+        push (@kept_cols, lc( $tum_rad_col ))   if( $tum_rad_col   && defined $input_maf_col_idx{lc( $tum_rad_col )} );
+        push (@kept_cols, lc( $tum_vad_col ))   if( $tum_vad_col   && defined $input_maf_col_idx{lc( $tum_vad_col )} );
+        push (@kept_cols, lc( $nrm_rad_col ))   if( $nrm_rad_col   && defined $input_maf_col_idx{lc( $nrm_rad_col )} );
+        push (@kept_cols, lc( $nrm_vad_col ))   if( $nrm_vad_col   && defined $input_maf_col_idx{lc( $nrm_vad_col )} );
          
         if( $retain_cols ){
             map{my $c = lc; push( @kept_cols, $c ) if ( !$force_new_cols{ $c } ) } split( ",", $retain_cols );
         }
     }
     else {
-        # Figure out which of the tumor alleles is non-reference
-        my ( $ref, $al1, $al2 ) = map{ my $c = lc; ( defined $input_maf_col_idx{$c} ? $cols[$input_maf_col_idx{$c}] : "" ) } qw( Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 );
-        my $var_allele = (( defined $al1 and $al1 and $al1 ne $ref ) ? $al1 : $al2 );
-        
         # Create a key for this variant using Chromosome:Start_Position:Tumor_Sample_Barcode:Reference_Allele:Variant_Allele
-        my $key = join( ":", ( map{ my $c = lc; $cols[$input_maf_col_idx{$c}] } qw( Chromosome Start_Position Tumor_Sample_Barcode Reference_Allele )), $var_allele );
+        my $key = join( ":", map{ my $c = lc; $cols[ $input_maf_col_idx{ $c } ] } qw( Chromosome Start_Position Tumor_Sample_Barcode Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ));
         
         # Store values for this variant into a hash, adding column names to the key
         foreach my $c ( @kept_cols ) {
-            $input_maf_data{$key}{$c} = "";
-            if( defined $input_maf_col_idx{$c} and defined $cols[$input_maf_col_idx{$c}] ) {
-                $input_maf_data{$key}{$c} = $cols[$input_maf_col_idx{$c}];
+            $input_maf_data{ $key }{ $c } = "";
+            if( defined $input_maf_col_idx{ $c } and defined $cols[ $input_maf_col_idx{ $c } ] ) {
+                $input_maf_data{ $key }{ $c } = $cols[ $input_maf_col_idx{ $c } ];
             }
         }
         
-        $key = join( ":", ( map{ my $c = lc; $cols[$input_maf_col_idx{$c}] } qw( Chromosome Start_Position Reference_Allele )), $var_allele );
-        if ( defined $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} ) {
-            $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} .= ','.$cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
+        $key = join( ":", map{ my $c = lc; $cols[ $input_maf_col_idx{ $c } ] } qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ) );
+        if ( defined $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } ) {
+            $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } .= ','.$cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
         } else {
-            $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'}  = $cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
+            $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' }  = $cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
         }
         
     }
@@ -215,8 +217,10 @@ if ( $output_maf ) {
 }
 
 PropagateAnnotation ( "$annotated_maf", 1 ) if ( $annotated_maf );
-PropagateAnnotation ( "$input_maf.uniq.maf", ( $annotated_maf ? 0 : 1 ) ) if ( -e "$input_maf.uniq.maf" );
-
+if ( -e "$input_maf.uniq.maf" ){
+    PropagateAnnotation ( "$input_maf.uniq.maf", ( $annotated_maf ? 0 : 1 ) );
+    `rm $input_maf.uniq.maf`;
+}
 $output_maf_fh->close;
 
 ########################## Read VEP annotation to be assign to variants in input MAF ##############################
@@ -250,27 +254,35 @@ sub PropagateAnnotation {
         }
         
         # For all other lines, insert the data collected from the original input MAF
-        my $key = join( ":", map{ my $c = lc; $cols[$output_maf_col_idx{$c}] } qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele2 ));
-        next if ( $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} eq "");
+        my $key = join( ":", map{ my $c = lc; $cols[$output_maf_col_idx{$c}] } qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ));
+        next if ( !defined $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
     
         my @t_ids = split( ",", $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
         $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} = "";
 
         foreach my $t ( @t_ids ) {
-            $cols[$output_maf_col_idx{tumor_sample_barcode}] = $t;
-            $key = join( ":", map{ my $c = lc; $cols[$output_maf_col_idx{$c}] } qw( Chromosome Start_Position Tumor_Sample_Barcode Reference_Allele Tumor_Seq_Allele2));
+            $cols[ $output_maf_col_idx{ tumor_sample_barcode } ] = $t;
+            $key = join( ":", map{ my $c = lc; $cols[ $output_maf_col_idx{$c} ] } qw( Chromosome Start_Position Tumor_Sample_Barcode Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ));
             foreach my $c ( @kept_cols ){
-                $cols[$output_maf_col_idx{$c}] = $input_maf_data{$key}{$c} if( defined $input_maf_data{$key}{$c} );
+                $cols[ $output_maf_col_idx{ $c } ] = $input_maf_data{ $key }{ $c } if( exists $input_maf_data{ $key }{ $c } );
             }
             
-            $cols[ $output_maf_col_idx{lc('t_ref_count')} ] = ( defined $tum_rad_col && defined $input_maf_data{$key}{$tum_rad_col} ) ? $input_maf_data{$key}{$tum_rad_col} : "";
-            $cols[ $output_maf_col_idx{lc('t_alt_count')} ] = ( defined $tum_vad_col && defined $input_maf_data{$key}{$tum_vad_col} ) ? $input_maf_data{$key}{$tum_vad_col} : "";
-            $cols[ $output_maf_col_idx{lc('n_ref_count')} ] = ( defined $nrm_rad_col && defined $input_maf_data{$key}{$nrm_rad_col} ) ? $input_maf_data{$key}{$nrm_rad_col} : "";
-            $cols[ $output_maf_col_idx{lc('n_alt_count')} ] = ( defined $nrm_vad_col && defined $input_maf_data{$key}{$nrm_vad_col} ) ? $input_maf_data{$key}{$nrm_vad_col} : "";
+            $cols[ $output_maf_col_idx{ t_ref_count } ] = $input_maf_data{$key}{$tum_rad_col} if( defined $tum_rad_col && exists $input_maf_data{$key}{$tum_rad_col} );
+            $cols[ $output_maf_col_idx{ t_alt_count } ] = $input_maf_data{$key}{$tum_vad_col} if( defined $tum_vad_col && exists $input_maf_data{$key}{$tum_vad_col} );
+            $cols[ $output_maf_col_idx{ n_ref_count } ] = $input_maf_data{$key}{$nrm_rad_col} if( defined $nrm_rad_col && exists $input_maf_data{$key}{$nrm_rad_col} );
+            $cols[ $output_maf_col_idx{ n_alt_count } ] = $input_maf_data{$key}{$nrm_vad_col} if( defined $nrm_vad_col && exists $input_maf_data{$key}{$nrm_vad_col} );
+       
+            if ( $tum_depth_col && exists $input_maf_col_idx{lc( $tum_depth_col )} && defined $input_maf_col_idx{lc( $tum_depth_col )} ) {
+                $cols[ $output_maf_col_idx{ t_depth } ] = $input_maf_data{$key}{ lc( $tum_depth_col ) };
+            }else{
+                $cols[ $output_maf_col_idx{ t_depth } ] = ( $cols[$output_maf_col_idx{ t_ref_count }] =~ /^\d+$/ && $cols[$output_maf_col_idx{ t_alt_count }] =~ /^\d+$/ ) ? ( $cols[$output_maf_col_idx{ t_ref_count }] + $cols[$output_maf_col_idx{ t_alt_count }] ) : "";
+            }
             
-            $cols[ $output_maf_col_idx{lc('t_depth')} ] = ( $cols[$output_maf_col_idx{lc('t_ref_count')}] =~ /^\d+$/ && $cols[$output_maf_col_idx{lc('t_alt_count')}] =~ /^\d+$/ ) ? ( $cols[$output_maf_col_idx{lc('t_ref_count')}] + $cols[$output_maf_col_idx{lc('t_alt_count')}] ) : "";
-            $cols[ $output_maf_col_idx{lc('n_depth')} ] = ( $cols[$output_maf_col_idx{lc('n_ref_count')}] =~ /^\d+$/ && $cols[$output_maf_col_idx{lc('n_alt_count')}] =~ /^\d+$/ ) ? ( $cols[$output_maf_col_idx{lc('n_ref_count')}] + $cols[$output_maf_col_idx{lc('n_alt_count')}] ) : "";
-            
+            if ( $nrm_depth_col && exists $input_maf_col_idx{lc( $nrm_depth_col )} && defined $input_maf_col_idx{lc( $nrm_depth_col )} ) {
+                $cols[ $output_maf_col_idx{ n_depth } ] = $input_maf_data{$key} {lc( $nrm_depth_col ) };
+            }else{
+                $cols[ $output_maf_col_idx{ n_depth } ] = ( $cols[$output_maf_col_idx{ n_ref_count }] =~ /^\d+$/ && $cols[$output_maf_col_idx{ n_alt_count }] =~ /^\d+$/ ) ? ( $cols[$output_maf_col_idx{ n_ref_count }] + $cols[$output_maf_col_idx{ n_alt_count }] ) : "";
+            }
             $output_maf_fh->print( join( "\t", @cols ) . "\n" );
         }
     }
