@@ -19,7 +19,7 @@ Description
 
 Another script file [run-vep-wrapper.pl]() provides application-level wrapper functions. I mainly use it to test [fast-vep-wrapper.pl](). I also use [run-vep-wrapper.pl]() to run [maf2maf.pl](https://github.com/ckandoth/vcf2maf). Unlike [fast-vep-wrapper.pl](), [run-vep-wrapper.pl]() requires users to define a configuration file.
 
-Finally, text file [depth_cols.txt]() contains read count-related column names (1st column) that appear repeatitively in various MAF files. The 2nd column of the file are [vcf2maf](https://github.com/ckandoth/vcf2maf) arguments corresponding to these count-related column names. When parsing MAF file header, [run-vep-wrapper.pl]() looks for words in the 1st column of [depth_cols.txt]() and then automatically constructs correct command to run [fast-vep-wrapper.pl]() / [maf2maf.pl](https://github.com/ckandoth/vcf2maf).
+Finally, text file [depth_cols.txt]() contains read count-related column names (1st column) that appear repeatitively in various MAF files. The 2nd column of the file are [vcf2maf](https://github.com/ckandoth/vcf2maf) arguments corresponding to these count-related column names. When parsing MAF file header, [run-vep-wrapper.pl]() looks for words in the 1st column of [depth_cols.txt]() and then automatically constructs correct command to run [fast-vep-wrapper.pl]() / [maf2maf.pl](https://github.com/ckandoth/vcf2maf). The file [depth_cols.txt]() allows fully automatic annotation of MAF files from diverse sources.
 
 Acknowledgements
 ----------------

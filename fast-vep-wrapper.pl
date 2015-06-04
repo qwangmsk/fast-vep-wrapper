@@ -205,7 +205,7 @@ if ( ! $maf_header ) {
 elsif ( -e "$input_maf.uniq.maf" ) {
     my $new_maf_header = `grep ^Hugo_Symbol $input_maf.uniq.maf`;
     chomp $new_maf_header ;
-    die "ERROR: The format of new VEP annotation is inconsistent with $annotated_maf\n" if ( $maf_header ne $new_maf_header );
+    die "ERROR: The format of new annotation is not consistent with $annotated_maf\nAnnotated MAF:\n$maf_header\nNew annotation:\n$new_maf_header\n" if ( $maf_header ne $new_maf_header );
 }
 
 
