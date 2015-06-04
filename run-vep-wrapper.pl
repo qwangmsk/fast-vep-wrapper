@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# run-vep-wrapper - An application-level wrapper script for annotating MAF file using VEP.
+# run-vep-wrapper - An application-level wrapper script for annotating MAF files using VEP.
 
 
 use strict;
@@ -28,8 +28,8 @@ GetOptions
 'o|output-maf=s'    => \$output_maf,
 'a|annotated-maf=s' => \$annotated_maf,
 't|tmp-dir=s'       => \$tmp_dir,
-'u|use_cluster=s'   => \$use_cluster,
-'v|vep_forks=s'     => \$vep_forks,
+'u|use-cluster=s'   => \$use_cluster,
+'v|vep-forks=s'     => \$vep_forks,
 'c|config-file=s'   => \$config_file,
 'h|help|?'          => \$help,
 'man!'              => \$man,
@@ -38,7 +38,7 @@ pod2usage( -verbose => 1, -input => \*DATA, -exitval => 0 ) if( $help );
 pod2usage( -verbose => 2, -input => \*DATA, -exitval => 0 ) if( $man );
 
 
-# Check for missing arguments
+# Check arguments
 ( $input ) or die "ERROR: Missing input argument\n";
 ( -e $input ) or die "Error: $input does not exist\n";
 if ($output_maf){
@@ -48,14 +48,16 @@ if ($output_maf){
 # Check configuration file
 if ($config_file) {
     ( -e $config_file ) or die "ERROR: The configuration file $config_file does not exist\n";
-}else{
+}
+else{
     $config_file = "$FindBin::Bin/config.txt";
-    if (!-e $config_file){
-        if ( !-e 'config.txt' && !-e $ENV{"HOME"}.'/config.txt' ){
-            die "ERROR: Could not find configuration file config.txt\n";
-        }else{
-            $config_file = ( -e $ENV{"HOME"}.'/config.txt' ) ? $ENV{"HOME"}.'/config.txt' : 'config.txt'
-        }
+    if ( !-e $config_file ){
+        die "ERROR: Could not find configuration file config.txt\n";
+        # if ( !-e 'config.txt' && !-e $ENV{"HOME"}.'/config.txt' ){
+        #    die "ERROR: Could not find configuration file config.txt\n";
+        # }else{
+        #    $config_file = ( -e $ENV{"HOME"}.'/config.txt' ) ? $ENV{"HOME"}.'/config.txt' : 'config.txt'
+        # }
     }
 }
 
@@ -112,7 +114,6 @@ if ( -d $input ){
     foreach ( @mafs ){
         chomp;
         next if( !defined $_ );
-
         my ( $name, $path ) = fileparse( $_ );
 
         my $outFile;
@@ -121,7 +122,6 @@ if ( -d $input ){
         } else {
             $outFile = $path.$output_maf;
         }
-        
         AnnotateMAF( $_, $outFile, $path.$annotated_maf );
     }
 }
@@ -139,14 +139,12 @@ else{
     print "\nOutput file is $outFile\n\n";
     
     AnnotateMAF( $input, $outFile, $annotated_maf );
-    
 }
 
 ############################ Run VEP wrapper script #################################
 
 sub AnnotateMAF {
     my ( $inFile, $outFile, $annFile ) = @_;
-
     my ( $name, $path ) = fileparse( $inFile );
     
     PreProcess( $inFile, "$inFile.preprocessed.maf", "$inFile.msic" );
@@ -154,16 +152,18 @@ sub AnnotateMAF {
     $inFile = "$inFile.preprocessed.maf";
     
     my $cols_para = GetColsToRetain( $inFile );
-    
     my $cp_hd_cmd = "if [ -e $outFile ]; then head -5 $inFile | egrep \"^#\" > $outFile.tmp;egrep -v \"^#\" $outFile >> $outFile.tmp;mv $outFile.tmp $outFile; fi;rm $inFile";
 
+    # Contruct command line
     my $vep_cmd;
     $vep_cmd  = "$vep_wrap_script --ref-fasta $ref_fasta --vep-path $vep_path --vep-data $vep_data --vep-forks $vep_forks --input-maf $inFile --output-maf $outFile";
     $vep_cmd .= " --custom-enst $config{ custom_enst_file }" if (defined $config{ custom_enst_file });
-    $vep_cmd .= " --annotated-maf $annFile"                  if ( $annFile && $vep_wrap_script !~ /maf2maf.pl/ );
-    $vep_cmd .= " --tmp-dir $tmp_dir"                        if ( $tmp_dir );
+    $vep_cmd .= " --tmp-dir $tmp_dir" if ( $tmp_dir );
+    if ( $vep_wrap_script =~ /fast-vep-wrapper.pl/ ) {
+        $vep_cmd .= " --config-file $config_file";
+        $vep_cmd .= " --annotated-maf $annFile"  if( defined $annFile );
+    }
     $vep_cmd .= " $cols_para";
-    
     
     if ( lc( $use_cluster ) eq 'yes' || lc( $use_cluster ) eq 'y' ){
         # Submit a job to run VEP annotation
@@ -171,10 +171,8 @@ sub AnnotateMAF {
         chomp $NR;
     
         my $SP = "";
-        if( $NR >= 100000 ){
-            $SP = " -sp 100 ";
-        }
-    
+        $SP = " -sp 100 " if( $NR >= 100000 );
+        
         # Submit jobs to annotate MAF files
         # print "bsub $SP -n $vep_forks -R \047span[hosts=1]\047 -eo $path/vep.log 'perl $vep_cmd;$cp_hd_cmd'\n";
         print "$preInFile : ";
@@ -186,16 +184,13 @@ sub AnnotateMAF {
         
         # Replace MAF header
         system( $cp_hd_cmd ) == 0 or die "\nERROR: Failed to copy maf file header to annotated file!\nCommand: $cp_hd_cmd\n";
-
     }
-    
 }
 
 ######################### Construct output file name ##############################
 
 sub ConstructOutputFileName {
     my $inFile = shift;
-    
     my ( $name, $path ) = fileparse( $inFile );
     
     my $outFile;
@@ -297,7 +292,6 @@ sub PreProcess {
 
     # Delete temperary file
     `rm $inFile` if ( $preInFile ne $inFile );
-
 }
 
 ###################################################################################
@@ -336,12 +330,11 @@ sub GetColsToRetain {
 }
 
 
-
 __DATA__
 
 =head1 NAME
  
- run-vep-wrapper - Annotate the effects of variants in a MAF.
+ run-vep-wrapper - Annotate the effects of variants in MAF files.
  
 =head1 SYNOPSIS
  
@@ -356,21 +349,25 @@ __DATA__
  -a | --annotated-maf Path to annotated MAF file. If not specified, will look for filename in a configuration file
  -c | --config-file   A configuration file. If not specified, will look for it in program, working, home directory, respectively
  -t | --tmp-dir       Folder for intermediate files. Override same variable in configuration file if specified
- -u | --use_cluster   Value: yes, no. 'yes' will submit job to cluster. 'no' runs vep interatively. Default is 'no'
- -v | --vep_forks     Number of CPUs to run VEP
+ -u | --use-cluster   Value: yes, no. 'yes' will submit job to cluster. 'no' runs vep interatively. Default is 'no'
+ -v | --vep-forks     Number of CPUs to run VEP
  -h | -? | --help     Displays this information
  --man                Print detailed manual
  
 =head1 DESCRIPTION
  
- The script provides application-level wrapper functions. The script firstly checks data sanity. When annotating a MAF, it keeps as many columns in the original MAF as possible. If a directory is provided as input, all maf files in the directory and its sub directories, whose name should be specified in a configuration file, are recursively collected and annotated. The script can also submit jobs to computer cluster (using bsub command).
+ The script provides application-level wrapper functions. The script firstly checks data sanity. When annotating a MAF, it keeps as many columns in the original MAF as possible. If a directory is provided as input, all maf files in the directory and its sub directories, whose names are specified in a configuration file, are recursively collected and annotated. The script can also submit jobs to computer cluster (using bsub command).
  
 =head1 AUTHORS
  
- Qingguo Wang (josephw10000@gmail.com)
+ Qingguo Wang
+ 
+ Nikolaus Schultz Lab
+ Memorial Sloan Kettering Cancer Center
+ New York, NY 10065
  
 =head1 ACKNOWLEDGEMENTS
  
- Thank Cyriac Kandoth, Frederick Criscuolo, and Onur Sumer for insightful suggestions and helpful discussion
+ Thank Cyriac Kandoth, Frederick Criscuolo, and Onur Sumer for suggestions and discussion
  
 =cut

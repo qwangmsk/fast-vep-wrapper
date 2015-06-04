@@ -37,7 +37,7 @@ my ( $input_maf, $output_maf, $annotated_maf, $tmp_dir, $custom_enst_file );
 my ( $tum_depth_col, $tum_rad_col, $tum_vad_col );
 my ( $nrm_depth_col, $nrm_rad_col, $nrm_vad_col );
 my ( $retain_cols, $vep_path, $vep_data, $vep_forks );
-my ( $ref_fasta, $config_file );
+my ( $ref_fasta, $config_file, $maf2maf );
 
 
 GetOptions(
@@ -60,6 +60,7 @@ GetOptions(
 'vep-forks=s' => \$vep_forks,
 'ref-fasta=s' => \$ref_fasta,
 'config-file=s' => \$config_file,
+'maf2maf=s' => \$maf2maf,
 ) or pod2usage( -verbose => 1, -input => \*DATA, -exitval => 2 );
 pod2usage( -verbose => 1, -input => \*DATA, -exitval => 0 ) if( $help );
 pod2usage( -verbose => 2, -input => \*DATA, -exitval => 0 ) if( $man );
@@ -68,15 +69,24 @@ pod2usage( -verbose => 2, -input => \*DATA, -exitval => 0 ) if( $man );
 ( defined $input_maf ) or die "ERROR: input-maf is not defined!\n";
 
 
-# Check configuration file
-if ($config_file) {
+# Check presence of configuration file
+if( $config_file ) {
     ( -e $config_file ) or die "ERROR: The configuration file $config_file does not exist\n";
-}else{
+    # Use configuration file to initialize variables
+    ReadConfigFile( );
+}
+else{
     $config_file = "$FindBin::Bin/config.txt";
-    if (!-e $config_file){
-        die "ERROR: Could not find configuration file config.txt in home/working/program directory\n" if (!-e 'config.txt' && !-e $ENV{"HOME"}.'/config.txt');
-        $config_file = (-e $ENV{"HOME"}.'/config.txt') ? $ENV{"HOME"}.'/config.txt' : 'config.txt'
+    if ( -e $config_file ){
+        ReadConfigFile( );
     }
+    else {
+        warn "WARNING: The configuration file is not defined\n";
+    }
+    # elsif ( -e 'config.txt' || -e $ENV{"HOME"}.'/config.txt' ) {
+    #    $config_file = (-e $ENV{"HOME"}.'/config.txt') ? $ENV{"HOME"}.'/config.txt' : 'config.txt';
+    #    ReadConfigFile( );
+    # }
 }
 
 
@@ -101,18 +111,6 @@ if( $var_count == 0 ) {
 
 
 ######################################## Run maf2maf ####################################################
-
-# Read configuration file
-my %config;
-map{ chomp; /^\s*([^=\s]+)\s*=\s*(.*)$/; $config{$1} = $2 if (defined $1 && defined $2) } `egrep -v \"^#\" $config_file`;
-
-my $maf2maf= $config{ 'vcf2maf_script' };
-$custom_enst_file = $config{ 'custom_enst_file' } if ( !$custom_enst_file  && exists $config{ custom_enst_file } );
-$vep_path  = $config{ vep_path }   if ( !$vep_path  && exists $config{ vep_path } );
-$vep_data  = $config{ vep_data }   if ( !$vep_data  && exists $config{ vep_data } );
-$ref_fasta = $config{ ref_fasta }  if ( !$ref_fasta && exists $config{ ref_fasta } );
-$vep_forks = $config{ vep_forks }  if ( !$vep_forks && exists $config{ vep_forks } );
-$tmp_dir   = $config{ tmp_dir }    if ( !$tmp_dir   && exists $config{ tmp_dir } );
 
 # Run maf2maf.pl to annotate variants
 if ( $var_count > 0 ) {
@@ -374,23 +372,41 @@ sub GetUniqVariants {
 }
 
 
+################################### Read configuration file #########################################
+
+
+sub ReadConfigFile {
+    my %config;
+    map{ chomp; /^\s*([^=\s]+)\s*=\s*(.*)$/; $config{$1} = $2 if (defined $1 && defined $2) } `egrep -v \"^#\" $config_file`;
+    
+    # Use the configuration file to initialize variables
+    $custom_enst_file = $config{ custom_enst_file } if ( !$custom_enst_file && exists $config{ custom_enst_file } );
+    $vep_path         = $config{ vep_path }         if ( !$vep_path         && exists $config{ vep_path } );
+    $vep_data         = $config{ vep_data }         if ( !$vep_data         && exists $config{ vep_data } );
+    $ref_fasta        = $config{ ref_fasta }        if ( !$ref_fasta        && exists $config{ ref_fasta } );
+    $vep_forks        = $config{ vep_forks }        if ( !$vep_forks        && exists $config{ vep_forks } );
+    $tmp_dir          = $config{ tmp_dir }          if ( !$tmp_dir          && exists $config{ tmp_dir } );
+    $maf2maf          = $config{ vcf2maf_script }   if ( !$maf2maf          && exists $config{ vcf2maf_script } );
+}
+
+
 __DATA__
 
 =head1 NAME
  
- fast-vep-wrapper.pl - Annotate the effects of variants in a MAF efficiently.
+ fast-vep-wrapper.pl - Quick annotation of variants in MAF files.
  
 =head1 SYNOPSIS
  
  perl fast-vep-wrapper.pl --help
- perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf  # Suppose configuration file config.txt is in correct path
- perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf --config-file /home/someone/bin/config-luna.txt
+ perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf --maf2maf /ssd-data/cmo/opt/vcf2maf/maf2maf.pl
+ perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf --config-file /home/someone/bin/config.txt
  
 =head1 OPTIONS
  
  --input-maf      Path to input file in MAF format
  --output-maf     Path to output MAF file [Default: STDOUT]
- --annotated-maf  Existing MAF file annotated earlier using VEP
+ --annotated-maf  MAF file annotated previously using VEP
  --tmp-dir        Folder to retain intermediate VCFs/MAFs after runtime [Default: usually under /tmp]
  --tum-depth-col  Name of MAF column for read depth in tumor BAM [t_depth]
  --tum-rad-col    Name of MAF column for reference allele depth in tumor BAM [t_ref_count]
@@ -404,7 +420,8 @@ __DATA__
  --vep-data       VEP's base cache/plugin directory [/ssd-data/cmo/opt/vep/v79]
  --vep-forks      Number of forked processes to use when running VEP [4]
  --ref-fasta      Reference FASTA file [/ssd-data/cmo/opt/vep/v79/homo_sapiens/79_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa]
- --config-file    A configuration file to store paths of vep, ref_fasta, and maf2maf.
+ --config-file    A configuration file to store paths of vep, ref_fasta, and maf2maf, in addition to other arguments
+ --maf2maf        Path to script maf2maf.pl [/ssd-data/cmo/opt/vcf2maf/maf2maf.pl]
  --help           Print a brief help message and quit
  --man            Print the detailed manual
  
@@ -414,10 +431,14 @@ __DATA__
  
 =head1 AUTHORS
  
- Qingguo Wang (josephw10000@gmail.com)
+ Qingguo Wang
+ 
+ Nikolaus Schultz Lab
+ Memorial Sloan Kettering Cancer Center
+ New York, NY 10065
 
 =head1 ACKNOWLEDGEMENTS
  
- Thank Sumit Middha, Frederick Criscuolo, and Cyriac Kandoth for insightful suggestions and helpful discussion
+ Thank Sumit Middha, Cyriac Kandoth, and Frederick Criscuolo for helpful suggestions and discussion
  
 =cut
