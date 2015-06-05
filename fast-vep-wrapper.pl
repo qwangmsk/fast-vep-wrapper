@@ -80,9 +80,6 @@ else{
     if ( -e $config_file ){
         ReadConfigFile( );
     }
-    else {
-        warn "WARNING: The configuration file is not defined\n";
-    }
     # elsif ( -e 'config.txt' || -e $ENV{"HOME"}.'/config.txt' ) {
     #    $config_file = (-e $ENV{"HOME"}.'/config.txt') ? $ENV{"HOME"}.'/config.txt' : 'config.txt';
     #    ReadConfigFile( );
@@ -136,7 +133,7 @@ if ( $var_count > 0 ) {
 }
 
 
-###################################### Assign Annotation ##################################################
+###################################### Process Input MAF ##################################################
 
 # Parse the input MAF and fetch the data for columns that we need to retain/override
 my $input_maf_fh = IO::File->new( $input_maf ) or die "ERROR: Couldn't open file: $input_maf\n";
@@ -166,22 +163,29 @@ while( my $line = $input_maf_fh->getline ) {
         push (@kept_cols, lc( $nrm_vad_col ))   if( $nrm_vad_col   && defined $input_maf_col_idx{lc( $nrm_vad_col )} );
          
         if( $retain_cols ){
-            map{my $c = lc; push( @kept_cols, $c ) if ( !$force_new_cols{ $c } ) } split( ",", $retain_cols );
+            map{ my $c = lc; push( @kept_cols, $c ) if ( !exists $force_new_cols{ $c } ) } split( ",", $retain_cols );
         }
     }
     else {
+        my ( $chr, $pos, $ref, $al1, $al2, $t_id ) = map{ my $c = lc; ( defined $input_maf_col_idx{ $c } ? $cols[ $input_maf_col_idx{ $c } ] : undef )} qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 Tumor_Sample_Barcode );
+        
+        # Make sure we have at least 1 variant allele. If 1 is unset, set it to the reference allele
+        next if( !$al1 and !$al2 );
+        
+        $al1 = $ref unless( $al1 );
+        $al2 = $ref unless( $al2 );
+        # To simplify setting tumor genotype later, ensure that $al2 is always non-REF
+        ( $al1, $al2 ) = ( $al2, $al1 ) if( $al2 eq $ref );
         # Create a key for this variant using Chromosome:Start_Position:Tumor_Sample_Barcode:Reference_Allele:Variant_Allele
-        my $key = join( ":", map{ my $c = lc; $cols[ $input_maf_col_idx{ $c } ] } qw( Chromosome Start_Position Tumor_Sample_Barcode Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ));
+        my $key = join( ":", ( $chr, $pos, $t_id, $ref, $al1, $al2 ) );
         
         # Store values for this variant into a hash, adding column names to the key
         foreach my $c ( @kept_cols ) {
             $input_maf_data{ $key }{ $c } = "";
-            if( defined $input_maf_col_idx{ $c } and defined $cols[ $input_maf_col_idx{ $c } ] ) {
-                $input_maf_data{ $key }{ $c } = $cols[ $input_maf_col_idx{ $c } ];
-            }
+            $input_maf_data{ $key }{ $c } = $cols[ $input_maf_col_idx{ $c } ] if( defined $input_maf_col_idx{ $c } && defined $cols[ $input_maf_col_idx{ $c } ] );
         }
         
-        $key = join( ":", map{ my $c = lc; $cols[ $input_maf_col_idx{ $c } ] } qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ) );
+        $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
         if ( defined $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } ) {
             $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } .= ','.$cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
         } else {
@@ -250,9 +254,18 @@ sub PropagateAnnotation {
             $output_maf_fh->print( "$maf_header\n" ) if ( $print_header );
             next;
         }
-        
-        # For all other lines, insert the data collected from the original input MAF
-        my $key = join( ":", map{ my $c = lc; $cols[$output_maf_col_idx{$c}] } qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ));
+    
+        my ( $chr, $pos, $ref, $al1, $al2 ) = map{ my $c = lc; ( defined $output_maf_col_idx{ $c } ? $cols[ $output_maf_col_idx{ $c } ] : undef )} qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 );
+    
+        # Make sure we have at least 1 variant allele. If 1 is unset, set it to the reference allele
+        next if( !$al1 and !$al2 );
+    
+        $al1 = $ref unless( $al1 );
+        $al2 = $ref unless( $al2 );
+        # To simplify setting tumor genotype later, ensure that $al2 is always non-REF
+        ( $al1, $al2 ) = ( $al2, $al1 ) if( $al2 eq $ref );
+        # Create a key for this variant using Chromosome:Start_Position:Tumor_Sample_Barcode:Reference_Allele:Variant_Allele
+        my $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
         next if ( !defined $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
     
         my @t_ids = split( ",", $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
@@ -260,7 +273,7 @@ sub PropagateAnnotation {
 
         foreach my $t ( @t_ids ) {
             $cols[ $output_maf_col_idx{ tumor_sample_barcode } ] = $t;
-            $key = join( ":", map{ my $c = lc; $cols[ $output_maf_col_idx{$c} ] } qw( Chromosome Start_Position Tumor_Sample_Barcode Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 ));
+            $key = join( ":", ( $chr, $pos, $t, $ref, $al1, $al2 ) );
             foreach my $c ( @kept_cols ){
                 $cols[ $output_maf_col_idx{ $c } ] = $input_maf_data{ $key }{ $c } if( exists $input_maf_data{ $key }{ $c } );
             }
@@ -334,11 +347,7 @@ sub GetUniqVariants {
         ( %col_idx ) or die "ERROR: Couldn't find a header line in the MAF: $in_maf";
         
         # For a variant in the MAF, parse out the bare minimum data needed by a VCF
-        my ( $chr, $pos, $ref, $al1, $al2, $t_id, $n_id, $n_al1, $n_al2 ) = map{ my $c = lc; ( defined $col_idx{$c} ? $cols[$col_idx{$c}] : undef )} qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 Tumor_Sample_Barcode Matched_Norm_Sample_Barcode Match_Norm_Seq_Allele1 Match_Norm_Seq_Allele2 );
-        
-        # If normal alleles are unset in the MAF (quite common), assume homozygous reference
-        $n_al1 = $ref unless( $n_al1 );
-        $n_al2 = $ref unless( $n_al2 );
+        my ( $chr, $pos, $ref, $al1, $al2, $t_id ) = map{ my $c = lc; ( defined $col_idx{$c} ? $cols[ $col_idx{$c} ] : undef )} qw( Chromosome Start_Position Reference_Allele Tumor_Seq_Allele1 Tumor_Seq_Allele2 Tumor_Sample_Barcode);
         
         # Make sure we have at least 1 variant allele. If 1 is unset, set it to the reference allele
         if( !$al1 and !$al2 ) {
@@ -346,18 +355,17 @@ sub GetUniqVariants {
             next;
         }
         
+        # If normal alleles are unset in the MAF (quite common), assume homozygous reference
         $al1 = $ref unless( $al1 );
         $al2 = $ref unless( $al2 );
         # To simplify setting tumor genotype later, ensure that $al2 is always non-REF
         ( $al1, $al2 ) = ( $al2, $al1 ) if( $al2 eq $ref );
-        # Do the same for the normal alleles, though it makes no difference if both are REF
-        ( $n_al1, $n_al2 ) = ( $n_al2, $n_al1 ) if( $n_al2 eq $ref );
         
         # Construct a hash key to filter out duplicate mutations.
-        my $hash_key = "$chr\t$pos\t$ref\t$al1\t$al2\t$n_al1\t$n_al2";
+        my $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
         
-        if ( ! exists $mutations { $hash_key } ) {
-            $mutations { $hash_key } = 1;
+        if ( ! exists $mutations { $key } ) {
+            $mutations { $key } = 1;
             
             $cols[$t_idx] = 'TUMOR';
             $cols[$n_idx] = 'NORMAL' if ( defined $n_idx );

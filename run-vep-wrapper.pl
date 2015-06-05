@@ -16,8 +16,11 @@ use Cwd;
 
 ################################ Read input parameters ###############################
 
-my ( $input, $output_maf, $annotated_maf );
-my ( $tmp_dir, $vep_forks);
+my ( $maf2maf, $vep_wrap_script );
+my ( $vep_path, $vep_data, $vep_forks );
+my ( $ref_fasta, $custom_enst_file );
+my ( $input, $input_filename, $output_maf, $annotated_maf );
+my ( $tmp_dir, $depth_col_file);
 my ( $config_file, $use_cluster );
 my ( $help, $man );
 
@@ -38,26 +41,21 @@ pod2usage( -verbose => 1, -input => \*DATA, -exitval => 0 ) if( $help );
 pod2usage( -verbose => 2, -input => \*DATA, -exitval => 0 ) if( $man );
 
 
-# Check arguments
+# Check input and output arguments
 ( $input ) or die "ERROR: Missing input argument\n";
 ( -e $input ) or die "Error: $input does not exist\n";
-if ($output_maf){
+if ( $output_maf ){
     die "ERROR: Output is a directory\n" if (-d $output_maf);
 }
 
 # Check configuration file
-if ($config_file) {
+if ( $config_file ) {
     ( -e $config_file ) or die "ERROR: The configuration file $config_file does not exist\n";
 }
 else{
     $config_file = "$FindBin::Bin/config.txt";
     if ( !-e $config_file ){
         die "ERROR: Could not find configuration file config.txt\n";
-        # if ( !-e 'config.txt' && !-e $ENV{"HOME"}.'/config.txt' ){
-        #    die "ERROR: Could not find configuration file config.txt\n";
-        # }else{
-        #    $config_file = ( -e $ENV{"HOME"}.'/config.txt' ) ? $ENV{"HOME"}.'/config.txt' : 'config.txt'
-        # }
     }
 }
 
@@ -65,49 +63,43 @@ else{
 my %config;
 map{ chomp; /^\s*([^=\s]+)\s*=\s*(.*)$/; $config{$1} = $2 if (defined $1 && defined $2) } `egrep -v \"^#\" $config_file`;
 
+$maf2maf          = $config{ vcf2maf_script };
+$vep_path         = $config{ vep_path };
+$vep_data         = $config{ vep_data };
+$ref_fasta        = $config{ ref_fasta };
+$custom_enst_file = $config{ custom_enst_file }  if ( exists $config{ custom_enst_file } );
+$vep_forks        = $config{ vep_forks }         if ( !$vep_forks );
+$tmp_dir          = $config{ tmp_dir }           if ( !$tmp_dir && exists $config{ tmp_dir } );
 
-$annotated_maf = $config{ annotated_maf } if ( !$annotated_maf && defined $config{ annotated_maf } );
-my $vep_path   = $config{ vep_path };
-my $vep_data   = $config{ vep_data };
-my $ref_fasta  = $config{ ref_fasta };
-$vep_forks     = $config{ vep_forks }     if ( !$vep_forks );
-$use_cluster   = $config{ use_cluster }   if ( !$use_cluster );
-$tmp_dir       = $config{ tmp_dir }       if ( !$tmp_dir && defined $config{ tmp_dir } );
-
-`mkdir -p $tmp_dir` if( $tmp_dir && !-e $tmp_dir );
+$vep_wrap_script  = $config{ vep_wrap_script };
+$depth_col_file   = $config{ depth_def_file };
+$input_filename   = $config{ input_filename };
+$output_maf       = $config{ output_filename }   if ( !$output_maf && exists $config{ output_filename } );
+$annotated_maf    = $config{ annotated_maf }     if ( !$annotated_maf && exists $config{ annotated_maf } );
+$use_cluster      = $config{ use_cluster }       if ( !$use_cluster );
 
 
-# Known column names relevant to read depth
-my $depth_col_file = $config{ depth_def_file };
+# Check VEP wrapper scripts
+( defined $maf2maf && -e $maf2maf ) or die "Error: Configuration file does not provide correct vcf2maf_script\n";
+( defined $vep_wrap_script && -e $vep_wrap_script ) or die "Error: Configuration file does not provide correct vcf2maf_script\n";
+
+# Check TMP dir
+`mkdir -p $tmp_dir` if( defined $tmp_dir && !-e $tmp_dir );
+
+# Check file existance
 ( -s $depth_col_file ) or die "Error: $depth_col_file does not exist\n";
-
 # Get depth-related column names
-my %depth_cols = map{ chomp; split(/\t/) }`cat $depth_col_file`;
+my %depth_cols = map{ chomp; split( /\t/ ) }`cat $depth_col_file`;
 
 
-# VEP wrapper script
-my $vep_wrap_script;
-if ( defined $config{ vep_wrap_script } ) {
-    $vep_wrap_script = $config{ vep_wrap_script };
-}
-elsif ( defined $config{ vcf2maf_script } ){
-    $vep_wrap_script = $config{ vcf2maf_script };
-}
-else {
-    die "Error: Did not find vep wrapper script in configuration file\n";
-}
-
-( defined $vep_wrap_script && -e $vep_wrap_script ) or die "Error: $vep_wrap_script does not exist\n";
+$input_filename = 'data_mutations_extended.txt' if ( !defined $input_filename );
 
 
-####################### Find MAF files if input is a directory ########################
+############# Find MAF files recursively if input is a directory ##################
 
 if ( -d $input ){
 
     print "\nInput directory is $input\n\n";
-
-    my $input_filename = 'data_mutations_extended.txt';
-    $input_filename = $config{ input_filename } if (defined $config{ input_filename });
 
     # Recursively find maf files for VEP annotation
     my @mafs = `find $input -name $input_filename`;
@@ -157,10 +149,10 @@ sub AnnotateMAF {
     # Contruct command line
     my $vep_cmd;
     $vep_cmd  = "$vep_wrap_script --ref-fasta $ref_fasta --vep-path $vep_path --vep-data $vep_data --vep-forks $vep_forks --input-maf $inFile --output-maf $outFile";
-    $vep_cmd .= " --custom-enst $config{ custom_enst_file }" if (defined $config{ custom_enst_file });
+    $vep_cmd .= " --custom-enst $custom_enst_file" if (defined $custom_enst_file);
     $vep_cmd .= " --tmp-dir $tmp_dir" if ( $tmp_dir );
-    if ( $vep_wrap_script =~ /fast-vep-wrapper.pl/ ) {
-        $vep_cmd .= " --config-file $config_file";
+    if ( $vep_wrap_script !~ /maf2maf.pl/ ) {
+        $vep_cmd .= " --maf2maf $maf2maf";
         $vep_cmd .= " --annotated-maf $annFile"  if( defined $annFile );
     }
     $vep_cmd .= " $cols_para";
@@ -193,23 +185,16 @@ sub ConstructOutputFileName {
     my $inFile = shift;
     my ( $name, $path ) = fileparse( $inFile );
     
-    my $outFile;
-    if ( defined $config{ output_filename } ){
-        $outFile = $config{ output_filename };
-        $outFile = $path.$outFile if( $outFile );
+    if ( $name =~ /extended/ ) {
+        $name =~ s/extended/vep/;
+    }elsif ( $name =~ /txt$/ ){
+        $name =~ s/txt/vep.txt/;
+    }elsif ( $name =~ /maf$/ ){
+        $name =~ s/maf/vep.maf/;
+    }else{
+        $name .= 'vep.txt';
     }
-    if ( !$outFile ){
-        if ( $name =~ /extended/ ) {
-            $name =~ s/extended/vep/;
-        }elsif ( $name =~ /txt$/ ){
-            $name =~ s/txt/vep.txt/;
-        }elsif ( $name =~ /maf$/ ){
-            $name =~ s/maf/vep.maf/;
-        }else{
-            $name .= 'vep.txt';
-        }
-        $outFile = $path.$name;
-    }
+    my $outFile = $path.$name;
     return $outFile;
 }
 
