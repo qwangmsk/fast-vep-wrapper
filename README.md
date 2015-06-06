@@ -17,23 +17,43 @@ Description
 
 [fast-vep-wrapper.pl]() is derived from [vcf2maf](https://github.com/ckandoth/vcf2maf). By re-using previous annotation and improving parallel efficiency, it enhances annotation efficiency that is lacking in [vcf2maf](https://github.com/ckandoth/vcf2maf). The speed of [fast-vep-wrapper.pl]() is linear to the number of CPUs (vep_forks). For large MAF files and when using multiple CPUs, it can easily reduce computation time from hours to minutes.
 
-Another script file [run-vep-wrapper.pl]() provides application-level wrapper functions. I mainly use it to test [fast-vep-wrapper.pl](). I also use [run-vep-wrapper.pl]() to run [maf2maf.pl](https://github.com/ckandoth/vcf2maf). Unlike [fast-vep-wrapper.pl](), [run-vep-wrapper.pl]() requires users to define a configuration file.
+Other files
+-----------
 
-Finally, text file [depth_cols.txt]() contains read count-related column names (1st column) that appear repeatitively in various MAF files. The 2nd column of the file are [vcf2maf](https://github.com/ckandoth/vcf2maf) arguments corresponding to these count-related column names. When parsing MAF file header, [run-vep-wrapper.pl]() looks for words in the 1st column of [depth_cols.txt]() and then automatically constructs correct command to run [fast-vep-wrapper.pl]() / [maf2maf.pl](https://github.com/ckandoth/vcf2maf). The file [depth_cols.txt]() allows fully automatic annotation of MAF files from diverse sources.
+Besides [fast-vep-wrapper.pl](), this project also consists of the following files:
+ 1. Script file [run-vep-wrapper.pl]() provides application-level wrapper functions. I mainly use it to test [fast-vep-wrapper.pl](). I also use [run-vep-wrapper.pl]() to run [maf2maf.pl](https://github.com/ckandoth/vcf2maf). Unlike [fast-vep-wrapper.pl](), [run-vep-wrapper.pl]() requires users to define a configuration file.
+ 2. Text file [depth_cols.txt]() contains read count-related column names (1st column) that appear repeatitively in various MAF files. The 2nd column of the file are [vcf2maf](https://github.com/ckandoth/vcf2maf) arguments corresponding to these count-related column names. When parsing MAF file header, [run-vep-wrapper.pl]() looks for words in the 1st column of [depth_cols.txt]() and then automatically constructs correct command to run [fast-vep-wrapper.pl]() / [maf2maf.pl](https://github.com/ckandoth/vcf2maf). The file [depth_cols.txt]() allows fully automatic annotation of MAF files from diverse sources.
+ 3. Script [msk-vep-wrapper.pl]() stores and re-uses VEP-annotated MAF files. It is designed specifically for MSKCC user who does not want to manage previous annotation files.
+
+Quick start
+-----------
+
+View usage information:
+
+    perl fast-vep-wrapper.pl --help
+    perl run-vep-wrapper.pl --help
+    perl msk-vep-wrapper.pl --help
+
+Run the script [fast-vep-wrapper.pl]() directly:
+
+    perl fast-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf --maf2maf /ssd-data/cmo/opt/vcf2maf/maf2maf.pl
+
+Use wrapper script to run [fast-vep-wrapper.pl]() (suppose a configuration file config.txt already exists in the same directory as script files):
+
+    perl run-vep-wrapper.pl --input-maf test.maf --output-maf test.vep.maf --tmp-dir /ssd-data/portal-tmp-dir/, or
+    perl run-vep-wrapper.pl -i test.maf -o test.vep.maf -t /ssd-data/portal-tmp-dir/
+
 
 Acknowledgements
 ----------------
 
-Thank Cyriac Kandoth, Frederick Criscuolo, Onur Sumer, Sumit Middha, and Benjamin Gross for helpful suggestions and discussion
+    Thank Cyriac Kandoth, Frederick Criscuolo, Onur Sumer, Sumit Middha, and Benjamin Gross for helpful suggestions and discussion
 
 Authors
 -------
 
-Qingguo Wang
-
-Nikolaus Schultz Lab
-
-Memorial Sloan Kettering Cancer Center
-
-New York, NY 10065
+    Qingguo Wang
+    Nikolaus Schultz Lab
+    Memorial Sloan Kettering Cancer Center
+    New York, NY 10065
 
