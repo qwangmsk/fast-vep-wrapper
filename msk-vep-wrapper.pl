@@ -85,7 +85,7 @@ $wrapper_cmd .= " --annotated-maf $annotated_maf"   if ( -s $annotated_maf );
 system( $wrapper_cmd ) == 0  or die "\nERROR: Failed to run $vep_wrap_script!\nCommand: $wrapper_cmd\n";
 
 # Replace previous annotated MAF
-`cp $output_maf $annotated_maf`;
+`cp $output_maf $annotated_maf` if ( -s $output_maf );
 
 
 __DATA__

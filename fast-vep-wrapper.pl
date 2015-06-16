@@ -231,7 +231,7 @@ if ( $output_maf ) {
 PropagateAnnotation ( "$annotated_maf", 1 ) if ( $annotated_maf );
 if ( -e "$input_maf.uniq.maf" ){
     PropagateAnnotation ( "$input_maf.uniq.maf", ( $annotated_maf ? 0 : 1 ) );
-    `rm $input_maf.uniq.maf`;
+    `rm $input_maf.uniq.maf` if ( -e "$input_maf.uniq.maf" );
 }
 $output_maf_fh->close;
 
