@@ -79,13 +79,13 @@ $wrapper_cmd .= " --vep-path $vep_path"             if ( $vep_path );
 $wrapper_cmd .= " --vep-data $vep_data"             if ( $vep_data );
 $wrapper_cmd .= " --vep-forks $vep_forks"           if ( $vep_forks );
 $wrapper_cmd .= " --ref-fasta $ref_fasta"           if ( $ref_fasta );
-$wrapper_cmd .= " --annotated-maf $annotated_maf"   if ( -s $annotated_maf );
+#$wrapper_cmd .= " --annotated-maf $annotated_maf"   if ( -s $annotated_maf );
 
 # Run maf2maf.pl to annotate variants
 system( $wrapper_cmd ) == 0  or die "\nERROR: Failed to run $vep_wrap_script!\nCommand: $wrapper_cmd\n";
 
 # Replace previous annotated MAF
-`cp $output_maf $annotated_maf` if ( -s $output_maf );
+#`cp $output_maf $annotated_maf` if ( -s $output_maf );
 
 
 __DATA__

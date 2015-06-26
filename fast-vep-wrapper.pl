@@ -179,12 +179,12 @@ while( my $line = $input_maf_fh->getline ) {
         # Create a key for this variant using Chromosome:Start_Position:Tumor_Sample_Barcode:Reference_Allele:Variant_Allele
         my $key = join( ":", ( $chr, $pos, $t_id, $ref, $al1, $al2 ) );
         # Count duplicate mutations
-        # foreach( 0..50 ) {
-        #    if( !exists $input_maf_data{ $key."\t$_" } ) {
-        #        $key .= "\t$_";
-        #        last;
-        #    }
-        # }
+        foreach( 0..100 ) {
+           if( !exists $input_maf_data{ $key."\t$_" } ) {
+               $key .= "\t$_";
+               last;
+           }
+        }
         
         # Store values for this variant into a hash, adding column names to the key
         foreach my $c ( @kept_cols ) {
@@ -280,12 +280,14 @@ sub PropagateAnnotation {
     
         my @t_ids = split( ",", $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
         $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} = "";
-
+        my %flag = ();
         foreach my $t ( @t_ids ) {
+            next if ( exists $flag{ $t } );
+            $flag{ $t } = 1;
             $cols[ $output_maf_col_idx{ tumor_sample_barcode } ] = $t;
-            #foreach( 0..50 ){
-            $key = join( ":", ( $chr, $pos, $t, $ref, $al1, $al2 ) );# . "\t$_";
-            #last if ( !exists $input_maf_data{ $key });
+            foreach( 0..100 ){
+            $key = join( ":", ( $chr, $pos, $t, $ref, $al1, $al2 ) ) . "\t$_";
+            last if ( !exists $input_maf_data{ $key });
             
             foreach my $c ( @kept_cols ){
                 $cols[ $output_maf_col_idx{ $c } ] = $input_maf_data{ $key }{ $c };
@@ -321,7 +323,7 @@ sub PropagateAnnotation {
                 $cols[ $output_maf_col_idx{ n_depth } ] = ( defined $nrm_depth_col and defined $input_maf_data{$key} {lc( $nrm_depth_col ) } ) ? $input_maf_data{$key}{ lc( $nrm_depth_col ) } : "";
             }
             $output_maf_fh->print( join( "\t", @cols ) . "\n" );
-            #}
+            }
         }
     }
 
