@@ -155,13 +155,36 @@ while( my $line = $input_maf_fh->getline ) {
         map{ my $c = lc; $input_maf_col_idx{$c} = $idx; ++$idx } @cols;
         
         @kept_cols= qw( tumor_sample_barcode matched_norm_sample_barcode );
-        push (@kept_cols, lc( $tum_depth_col )) if( $tum_depth_col and defined $input_maf_col_idx{lc( $tum_depth_col )} );
-        push (@kept_cols, lc( $nrm_depth_col )) if( $nrm_depth_col and defined $input_maf_col_idx{lc( $nrm_depth_col )} );
-        push (@kept_cols, lc( $tum_rad_col ))   if( $tum_rad_col   and defined $input_maf_col_idx{lc( $tum_rad_col )} );
-        push (@kept_cols, lc( $tum_vad_col ))   if( $tum_vad_col   and defined $input_maf_col_idx{lc( $tum_vad_col )} );
-        push (@kept_cols, lc( $nrm_rad_col ))   if( $nrm_rad_col   and defined $input_maf_col_idx{lc( $nrm_rad_col )} );
-        push (@kept_cols, lc( $nrm_vad_col ))   if( $nrm_vad_col   and defined $input_maf_col_idx{lc( $nrm_vad_col )} );
-         
+        if( $tum_depth_col and defined $input_maf_col_idx{ lc( $tum_depth_col ) } ){
+            push( @kept_cols, lc( $tum_depth_col ) ) ;
+        }elsif( defined $input_maf_col_idx{ t_depth } ){
+            push( @kept_cols, 't_depth' ) ;
+        }
+        if( $nrm_depth_col and defined $input_maf_col_idx{lc( $nrm_depth_col )} ){
+            push ( @kept_cols, lc( $nrm_depth_col ) ) ;
+        }elsif( defined $input_maf_col_idx{ n_depth } ){
+            push ( @kept_cols, 'n_depth' ) ;
+        }
+        if( $tum_rad_col   and defined $input_maf_col_idx{lc( $tum_rad_col )} ){
+            push ( @kept_cols, lc( $tum_rad_col ) ) ;
+        }elsif( defined $input_maf_col_idx{ t_ref_count } ){
+            push ( @kept_cols, 't_ref_count' ) ;
+        }
+        if( $tum_vad_col and defined $input_maf_col_idx{lc( $tum_vad_col )} ){
+            push ( @kept_cols, lc( $tum_vad_col ) );
+        }elsif( defined $input_maf_col_idx{ t_alt_count } ){
+            push ( @kept_cols, 't_alt_count' );
+        }
+        if( $nrm_rad_col and defined $input_maf_col_idx{lc( $nrm_rad_col )} ){
+            push ( @kept_cols, lc( $nrm_rad_col ) );
+        }elsif( defined $input_maf_col_idx{ n_ref_count } ){
+            push ( @kept_cols, 'n_ref_count' );
+        }
+        if( $nrm_vad_col and defined $input_maf_col_idx{lc( $nrm_vad_col )} ){
+            push ( @kept_cols, lc( $nrm_vad_col ) );
+        }elsif( defined $input_maf_col_idx{ n_alt_count } ){
+            push ( @kept_cols, 'n_alt_count' );
+        }
         if( $retain_cols ){
             map{ my $c = lc; push( @kept_cols, $c ) if ( !exists $force_new_cols{ $c } ) } split( ",", $retain_cols );
         }
@@ -286,43 +309,70 @@ sub PropagateAnnotation {
             $flag{ $t } = 1;
             $cols[ $output_maf_col_idx{ tumor_sample_barcode } ] = $t;
             foreach( 0..100 ){
-            $key = join( ":", ( $chr, $pos, $t, $ref, $al1, $al2 ) ) . "\t$_";
-            last if ( !exists $input_maf_data{ $key });
-            
-            foreach my $c ( @kept_cols ){
-                $cols[ $output_maf_col_idx{ $c } ] = $input_maf_data{ $key }{ $c };
-            }
-            
-            $cols[ $output_maf_col_idx{ t_ref_count } ] = $input_maf_data{ $key }{ $tum_rad_col } if( defined $tum_rad_col and exists $input_maf_data{ $key }{ $tum_rad_col } );
-            $cols[ $output_maf_col_idx{ t_alt_count } ] = $input_maf_data{ $key }{ $tum_vad_col } if( defined $tum_vad_col and exists $input_maf_data{ $key }{ $tum_vad_col } );
-            $cols[ $output_maf_col_idx{ n_ref_count } ] = $input_maf_data{ $key }{ $nrm_rad_col } if( defined $nrm_rad_col and exists $input_maf_data{ $key }{ $nrm_rad_col } );
-            $cols[ $output_maf_col_idx{ n_alt_count } ] = $input_maf_data{ $key }{ $nrm_vad_col } if( defined $nrm_vad_col and exists $input_maf_data{ $key }{ $nrm_vad_col } );
-            
-            
-            if( !defined $tum_depth_col or !exists $input_maf_col_idx{lc( $tum_depth_col )} or !defined $cols[ $output_maf_col_idx{ t_depth } ] or
-            (( $tum_depth_col and exists $input_maf_col_idx{lc( $tum_depth_col )} and defined $cols[ $output_maf_col_idx{ t_depth } ] and
-            (( $cols[ $output_maf_col_idx{ t_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_ref_count }] > $cols[ $output_maf_col_idx{ t_depth } ] ) or
-            ( $cols[ $output_maf_col_idx{ t_alt_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_alt_count }] > $cols[ $output_maf_col_idx{ t_depth } ] ) or
-            ( $cols[ $output_maf_col_idx{ t_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_alt_count }] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_ref_count }] + $cols[$output_maf_col_idx{ t_alt_count }] > $cols[ $output_maf_col_idx{ t_depth } ] ))))) {
-                $cols[ $output_maf_col_idx{ t_depth } ]  = 0;
-                $cols[ $output_maf_col_idx{ t_depth } ] += $cols[$output_maf_col_idx{ t_ref_count }] if ( $cols[$output_maf_col_idx{ t_ref_count }] =~ m/^\d+$/ );
-                $cols[ $output_maf_col_idx{ t_depth } ] += $cols[$output_maf_col_idx{ t_alt_count }] if ( $cols[$output_maf_col_idx{ t_alt_count }] =~ m/^\d+$/ );
-            }else{
-                $cols[ $output_maf_col_idx{ t_depth } ] = ( defined $tum_depth_col and defined $input_maf_data{$key}{ lc( $tum_depth_col ) } ) ? $input_maf_data{$key}{ lc( $tum_depth_col ) } : "";
-            }
-            
-            if( !defined $nrm_depth_col or !exists $input_maf_col_idx{lc( $nrm_depth_col )} or !defined $cols[ $output_maf_col_idx{ n_depth } ] or
-            (( $nrm_depth_col and exists $input_maf_col_idx{lc( $nrm_depth_col )} and defined $cols[ $output_maf_col_idx{ n_depth } ] and
-            (( $cols[ $output_maf_col_idx{ n_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ n_ref_count }] > $cols[ $output_maf_col_idx{ n_depth } ] ) or
-            ( $cols[ $output_maf_col_idx{ n_alt_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ n_alt_count }] > $cols[ $output_maf_col_idx{ n_depth } ] ) or
-            ( $cols[ $output_maf_col_idx{ n_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ n_alt_count }] =~ m/^\d+$/ and $cols[ $output_maf_col_idx{ n_ref_count } ] + $cols[$output_maf_col_idx{ n_alt_count }] > $cols[ $output_maf_col_idx{ n_depth } ] ))))) {
-                $cols[ $output_maf_col_idx{ n_depth } ]  = 0;
-                $cols[ $output_maf_col_idx{ n_depth } ] += $cols[$output_maf_col_idx{ n_ref_count }] if ( $cols[$output_maf_col_idx{ n_ref_count }] =~ m/^\d+$/ );
-                $cols[ $output_maf_col_idx{ n_depth } ] += $cols[$output_maf_col_idx{ n_alt_count }] if ( $cols[$output_maf_col_idx{ n_alt_count }] =~ m/^\d+$/ );
-            }else{
-                $cols[ $output_maf_col_idx{ n_depth } ] = ( defined $nrm_depth_col and defined $input_maf_data{$key} {lc( $nrm_depth_col ) } ) ? $input_maf_data{$key}{ lc( $nrm_depth_col ) } : "";
-            }
-            $output_maf_fh->print( join( "\t", @cols ) . "\n" );
+                $key = join( ":", ( $chr, $pos, $t, $ref, $al1, $al2 ) ) . "\t$_";
+                last if ( !exists $input_maf_data{ $key });
+                
+                foreach my $c ( @kept_cols ){
+                    $cols[ $output_maf_col_idx{ $c } ] = $input_maf_data{ $key }{ $c };
+                }
+                
+                if( defined $tum_rad_col and exists $input_maf_data{ $key }{ lc( $tum_rad_col ) } ){
+                    $cols[ $output_maf_col_idx{ t_ref_count } ] = $input_maf_data{ $key }{ lc( $tum_rad_col ) } ;
+                }elsif( exists $input_maf_data{ $key }{ t_ref_count }  ){
+                    $cols[ $output_maf_col_idx{ t_ref_count } ] = $input_maf_data{ $key }{ t_ref_count } ;
+                }
+                if( defined $tum_vad_col and exists $input_maf_data{ $key }{ lc( $tum_vad_col ) } ){
+                    $cols[ $output_maf_col_idx{ t_alt_count } ] = $input_maf_data{ $key }{ lc( $tum_vad_col ) } ;
+                }elsif( exists $input_maf_data{ $key }{ t_alt_count } ){
+                    $cols[ $output_maf_col_idx{ t_alt_count } ] = $input_maf_data{ $key }{ t_alt_count } ;
+                }
+                if( defined $nrm_rad_col and exists $input_maf_data{ $key }{ lc( $nrm_rad_col ) } ){
+                    $cols[ $output_maf_col_idx{ n_ref_count } ] = $input_maf_data{ $key }{ lc( $nrm_rad_col ) } ;
+                }elsif( exists $input_maf_data{ $key }{ n_ref_count } ){
+                    $cols[ $output_maf_col_idx{ n_ref_count } ] = $input_maf_data{ $key }{ n_ref_count } ;
+                }
+                if( defined $nrm_vad_col and exists $input_maf_data{ $key }{ lc( $nrm_vad_col ) } ){
+                    $cols[ $output_maf_col_idx{ n_alt_count } ] = $input_maf_data{ $key }{ lc( $nrm_vad_col ) } ;
+                }elsif( exists $input_maf_data{ $key }{ n_alt_count } ){
+                    $cols[ $output_maf_col_idx{ n_alt_count } ] = $input_maf_data{ $key }{ n_alt_count } ;
+                }
+                
+                if( !defined $tum_depth_col or !exists $input_maf_col_idx{lc( $tum_depth_col )} or !defined $cols[ $output_maf_col_idx{ t_depth } ] or
+                (( $tum_depth_col and exists $input_maf_col_idx{lc( $tum_depth_col )} and defined $cols[ $output_maf_col_idx{ t_depth } ] and
+                (( $cols[ $output_maf_col_idx{ t_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_ref_count }] > $cols[ $output_maf_col_idx{ t_depth } ] ) or
+                ( $cols[ $output_maf_col_idx{ t_alt_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_alt_count }] > $cols[ $output_maf_col_idx{ t_depth } ] ) or
+                ( $cols[ $output_maf_col_idx{ t_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_alt_count }] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ t_ref_count }] + $cols[$output_maf_col_idx{ t_alt_count }] > $cols[ $output_maf_col_idx{ t_depth } ] ))))) {
+                    $cols[ $output_maf_col_idx{ t_depth } ]  = 0;
+                    $cols[ $output_maf_col_idx{ t_depth } ] += $cols[$output_maf_col_idx{ t_ref_count }] if ( $cols[$output_maf_col_idx{ t_ref_count }] =~ m/^\d+$/ );
+                    $cols[ $output_maf_col_idx{ t_depth } ] += $cols[$output_maf_col_idx{ t_alt_count }] if ( $cols[$output_maf_col_idx{ t_alt_count }] =~ m/^\d+$/ );
+                }else{
+                    if( defined $tum_depth_col and defined $input_maf_data{$key}{ lc( $tum_depth_col ) } ){
+                        $cols[ $output_maf_col_idx{ t_depth } ] =  $input_maf_data{ $key }{ lc( $tum_depth_col ) };
+                    }elsif ( exists $input_maf_data{ $key }{ t_depth } ){
+                        $cols[ $output_maf_col_idx{ t_depth } ] =  $input_maf_data{ $key }{ t_depth };
+                    }else{
+                        $cols[ $output_maf_col_idx{ t_depth } ] =  "";
+                    }
+                }
+                
+                if( !defined $nrm_depth_col or !exists $input_maf_col_idx{lc( $nrm_depth_col )} or !defined $cols[ $output_maf_col_idx{ n_depth } ] or
+                (( $nrm_depth_col and exists $input_maf_col_idx{lc( $nrm_depth_col )} and defined $cols[ $output_maf_col_idx{ n_depth } ] and
+                (( $cols[ $output_maf_col_idx{ n_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ n_ref_count }] > $cols[ $output_maf_col_idx{ n_depth } ] ) or
+                ( $cols[ $output_maf_col_idx{ n_alt_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ n_alt_count }] > $cols[ $output_maf_col_idx{ n_depth } ] ) or
+                ( $cols[ $output_maf_col_idx{ n_ref_count } ] =~ m/^\d+$/ and $cols[$output_maf_col_idx{ n_alt_count }] =~ m/^\d+$/ and $cols[ $output_maf_col_idx{ n_ref_count } ] + $cols[$output_maf_col_idx{ n_alt_count }] > $cols[ $output_maf_col_idx{ n_depth } ] ))))) {
+                    $cols[ $output_maf_col_idx{ n_depth } ]  = 0;
+                    $cols[ $output_maf_col_idx{ n_depth } ] += $cols[$output_maf_col_idx{ n_ref_count }] if ( $cols[$output_maf_col_idx{ n_ref_count }] =~ m/^\d+$/ );
+                    $cols[ $output_maf_col_idx{ n_depth } ] += $cols[$output_maf_col_idx{ n_alt_count }] if ( $cols[$output_maf_col_idx{ n_alt_count }] =~ m/^\d+$/ );
+                }else{
+                    if( defined $nrm_depth_col and defined $input_maf_data{$key} {lc( $nrm_depth_col ) } ){
+                        $cols[ $output_maf_col_idx{ n_depth } ] =  $input_maf_data{ $key }{ lc( $nrm_depth_col ) };
+                    }elsif( $input_maf_data{ $key }{ n_depth } ){
+                        $cols[ $output_maf_col_idx{ n_depth } ] = $input_maf_data{ $key }{ n_depth };
+                    }else{
+                        $cols[ $output_maf_col_idx{ n_depth } ] =  "";
+                    }
+                }
+                $output_maf_fh->print( join( "\t", @cols ) . "\n" );
             }
         }
     }
