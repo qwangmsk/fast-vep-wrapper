@@ -121,7 +121,7 @@ if ( $var_count > 0 ) {
     $maf2maf_cmd .= " --nrm-depth-col $nrm_depth_col"   if ( $nrm_depth_col );
     $maf2maf_cmd .= " --nrm-rad-col $nrm_rad_col"       if ( $nrm_rad_col );
     $maf2maf_cmd .= " --nrm-vad-col $nrm_vad_col"       if ( $nrm_vad_col );
-    $maf2maf_cmd .= " --retain-cols $retain_cols"       if ( $retain_cols );
+    $maf2maf_cmd .= " --retain-cols \"$retain_cols\""   if ( $retain_cols );
     $maf2maf_cmd .= " --custom-enst $custom_enst_file"  if ( $custom_enst_file );
     $maf2maf_cmd .= " --vep-path $vep_path"             if ( $vep_path );
     $maf2maf_cmd .= " --vep-data $vep_data"             if ( $vep_data );
