@@ -313,7 +313,7 @@ sub PropagateAnnotation {
                 last if ( !exists $input_maf_data{ $key });
                 
                 foreach my $c ( @kept_cols ){
-                    $cols[ $output_maf_col_idx{ $c } ] = $input_maf_data{ $key }{ $c };
+                    $cols[ $output_maf_col_idx{ $c } ] = $input_maf_data{ $key }{ $c } if (exists $output_maf_col_idx{ $c });
                 }
                 
                 if( defined $tum_rad_col and exists $input_maf_data{ $key }{ lc( $tum_rad_col ) } ){
