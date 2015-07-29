@@ -209,13 +209,30 @@ while( my $line = $input_maf_fh->getline ) {
            }
         }
         
+        # Process indels for which Reference_Allele, Tumor_Seq_Allele1, and Tumor_Seq_Allele2 have the same leading character
+        my $key2;
+        if ((length($ref) != length($al1) or length($ref) != length($al2)) and
+            substr($ref, 0, 1) eq substr($al1, 0, 1) and
+            substr($ref, 0, 1) eq substr($al2, 0, 1)){
+            $key2 = join( ":", ( $chr, length(substr($ref,1)) ? ($pos+1):$pos, $t_id, length(substr($ref,1)) ? substr($ref,1) : '-', length(substr($al1,1)) ? substr($al1,1) : '-', length(substr($al2,1)) ? substr($al2,1) : '-' ) );
+            # Count duplicate mutations
+            foreach( 0..100 ) {
+                if( !exists $input_maf_data{ $key2."\t$_" } ) {
+                    $key2 .= "\t$_";
+                    last;
+                }
+            }
+        }
+        
         # Store values for this variant into a hash, adding column names to the key
         foreach my $c ( @kept_cols ) {
             $input_maf_data{ $key }{ $c } = "";
             $input_maf_data{ $key }{ $c } = $cols[ $input_maf_col_idx{ $c } ] if( defined $input_maf_col_idx{ $c } && defined $cols[ $input_maf_col_idx{ $c } ] );
+            next if ( !defined($key2) );
+            $input_maf_data{ $key2 }{ $c } = "";
+            $input_maf_data{ $key2 }{ $c } = $cols[ $input_maf_col_idx{ $c } ] if( defined $input_maf_col_idx{ $c } && defined $cols[ $input_maf_col_idx{ $c } ] );
         }
         $input_maf_data{ $key }{ matched_norm_sample_barcode } = "NORMAL" unless ( $input_maf_data{ $key }{ matched_norm_sample_barcode } );
-        
         $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
         if ( defined $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } ) {
             $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } .= ','.$cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
@@ -223,6 +240,15 @@ while( my $line = $input_maf_fh->getline ) {
             $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' }  = $cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
         }
         
+        if ( defined($key2) ){
+            $input_maf_data{ $key2 }{ matched_norm_sample_barcode } = "NORMAL" unless ( $input_maf_data{ $key2 }{ matched_norm_sample_barcode } );
+            $key2 = join( ":", ( $chr, length(substr($ref,1)) ? ($pos+1):$pos, length(substr($ref,1)) ? substr($ref,1) : '-', length(substr($al1,1)) ? substr($al1,1) : '-', length(substr($al2,1)) ? substr($al2,1) : '-' ) );
+            if ( defined $input_maf_data{ $key2 }{ '(AllTumorBarcodeTogether)+' } ) {
+                $input_maf_data{ $key2 }{ '(AllTumorBarcodeTogether)+' } .= ','.$cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
+            } else {
+                $input_maf_data{ $key2 }{ '(AllTumorBarcodeTogether)+' }  = $cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
+            }
+        }
     }
 }
 $input_maf_fh->close;
@@ -299,7 +325,9 @@ sub PropagateAnnotation {
         ( $al1, $al2 ) = ( $al2, $al1 ) if( $al2 eq $ref );
         # Create a key for this variant using Chromosome:Start_Position:Tumor_Sample_Barcode:Reference_Allele:Variant_Allele
         my $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
-        next if ( !defined $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
+        if ( !defined $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} ){
+            print "Unknown variant: $chr, $pos, $ref, $al1, $al2";
+        }
     
         my @t_ids = split( ",", $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
         $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} = "";
