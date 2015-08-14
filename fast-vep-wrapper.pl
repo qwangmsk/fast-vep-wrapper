@@ -200,7 +200,7 @@ while( my $line = $input_maf_fh->getline ) {
         # To simplify setting tumor genotype later, ensure that $al2 is always non-REF
         ( $al1, $al2 ) = ( $al2, $al1 ) if( $al2 eq $ref );
         # Create a key for this variant using Chromosome:Start_Position:Tumor_Sample_Barcode:Reference_Allele:Variant_Allele
-        my $key = join( ":", ( $chr, $pos, $t_id, $ref, $al1, $al2 ) );
+        my $key = join( ":", ( $chr, $pos, $t_id, $ref, $al2 ) );
         # Count duplicate mutations
         foreach( 0..100 ) {
            if( !exists $input_maf_data{ $key."\t$_" } ) {
@@ -233,7 +233,7 @@ while( my $line = $input_maf_fh->getline ) {
             $input_maf_data{ $key2 }{ $c } = $cols[ $input_maf_col_idx{ $c } ] if( defined $input_maf_col_idx{ $c } && defined $cols[ $input_maf_col_idx{ $c } ] );
         }
         $input_maf_data{ $key }{ matched_norm_sample_barcode } = "NORMAL" unless ( $input_maf_data{ $key }{ matched_norm_sample_barcode } );
-        $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
+        $key = join( ":", ( $chr, $pos, $ref, $al2 ) );
         if ( defined $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } ) {
             $input_maf_data{ $key }{ '(AllTumorBarcodeTogether)+' } .= ','.$cols[ $input_maf_col_idx{ tumor_sample_barcode } ];
         } else {
@@ -324,9 +324,9 @@ sub PropagateAnnotation {
         # To simplify setting tumor genotype later, ensure that $al2 is always non-REF
         ( $al1, $al2 ) = ( $al2, $al1 ) if( $al2 eq $ref );
         # Create a key for this variant using Chromosome:Start_Position:Tumor_Sample_Barcode:Reference_Allele:Variant_Allele
-        my $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
+        my $key = join( ":", ( $chr, $pos, $ref, $al2 ) );
         if ( !defined $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} ){
-            print "Unknown variant: $chr, $pos, $ref, $al1, $al2";
+            print "Unknown variant: $chr, $pos, $ref, $al1, $al2\n";
         }
     
         my @t_ids = split( ",", $input_maf_data{$key}{'(AllTumorBarcodeTogether)+'} );
@@ -337,7 +337,7 @@ sub PropagateAnnotation {
             $flag{ $t } = 1;
             $cols[ $output_maf_col_idx{ tumor_sample_barcode } ] = $t;
             foreach( 0..100 ){
-                $key = join( ":", ( $chr, $pos, $t, $ref, $al1, $al2 ) ) . "\t$_";
+                $key = join( ":", ( $chr, $pos, $t, $ref, $al2 ) ) . "\t$_";
                 last if ( !exists $input_maf_data{ $key });
                 
                 foreach my $c ( @kept_cols ){
@@ -469,7 +469,7 @@ sub GetUniqVariants {
         ( $al1, $al2 ) = ( $al2, $al1 ) if( $al2 eq $ref );
         
         # Construct a hash key to filter out duplicate mutations.
-        my $key = join( ":", ( $chr, $pos, $ref, $al1, $al2 ) );
+        my $key = join( ":", ( $chr, $pos, $ref, $al2 ) );
         
         if ( ! exists $mutations { $key } ) {
             $mutations { $key } = 1;
