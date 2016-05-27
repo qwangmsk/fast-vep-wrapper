@@ -1,18 +1,17 @@
 ###########################################################################
 # Variables used to run vcf2maf. 
 
-vcf2maf_script   = /opt/common/CentOS_6/vcf2maf/v1.6.0/maf2maf.pl
-vep_path	 = /opt/common/CentOS_6/vep/v81
-vep_data	 = /opt/common/CentOS_6/vep/v81
-ref_fasta	 = /opt/common/CentOS_6/vep/v81/homo_sapiens/81_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
-custom_enst_file = /opt/common/CentOS_6/vcf2maf/v1.6.0/data/isoform_overrides_at_mskcc
-vep_forks  	 = 4
+vep_path         = /opt/common/CentOS_6/vep/v82
+vep_data         = /opt/common/CentOS_6/vep/v82
+ref_fasta        = /opt/common/CentOS_6/vep/v82/homo_sapiens/82_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
+custom_enst_file = /opt/common/CentOS_6/vcf2maf/v1.6.7/data/isoform_overrides_at_mskcc
+vep_forks        = 4
 
 ###########################################################################
-# Variables used by run-vep-wrapper.pl
+## Variables used by run-vep-wrapper.pl
 
-vep_wrap_script = /opt/common/CentOS_6/vcf2maf/v1.6.0/maf2maf.pl
-depth_def_file	 = /home/wangq/projects/vep/depth_cols.txt
-input_filename	 = data_mutations_extended.txt
-output_filename	 = data_mutations_extended.vep.txt
-use_cluster	 = yes
+vep_wrap_script  = /opt/common/CentOS_6/vcf2maf/v1.6.7/maf2maf.pl
+depth_def_file   = /home/wangq/projects/vep/depth_cols.txt
+input_filename   = data_mutations_extended.txt
+output_filename  = data_mutations_vep.txt
+use_cluster      = no
