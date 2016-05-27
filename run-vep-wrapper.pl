@@ -16,7 +16,7 @@ use Cwd;
 
 ################################ Read input parameters ###############################
 
-my ( $maf2maf, $vep_wrap_script );
+my ( $vep_wrap_script );
 my ( $vep_path, $vep_data, $vep_forks );
 my ( $ref_fasta, $custom_enst_file );
 my ( $input, $input_filename, $output_maf, $annotated_maf );
@@ -42,46 +42,42 @@ pod2usage( -verbose => 2, -input => \*DATA, -exitval => 0 ) if( $man );
 
 
 # Check input and output arguments
-( $input ) or die "ERROR: Missing input argument\n";
+( defined $input ) or die "ERROR: Missing input argument\n";
 ( -e $input ) or die "Error: $input does not exist\n";
 if ( $output_maf ){
     die "ERROR: Output is a directory\n" if (-d $output_maf);
 }
 
 # Check configuration file
-if ( $config_file ) {
+if ( defined $config_file ) {
     ( -e $config_file ) or die "ERROR: The configuration file $config_file does not exist\n";
-}
-else{
+}else{
     $config_file = "$FindBin::Bin/config.txt";
-    if ( !-e $config_file ){
-        die "ERROR: Could not find configuration file config.txt\n";
-    }
+    ( -e $config_file ) or die "ERROR: Could not find configuration file config.txt\n";
 }
 
-# Read configuration file
+
+####################### Read configuration file ########################
+
 my %config;
 map{ chomp; /^\s*([^=\s]+)\s*=\s*(.*)$/; $config{$1} = $2 if (defined $1 && defined $2) } `egrep -v \"^#\" $config_file`;
 
-$maf2maf          = $config{ vcf2maf_script };
 $vep_path         = $config{ vep_path };
 $vep_data         = $config{ vep_data };
 $ref_fasta        = $config{ ref_fasta };
-$custom_enst_file = $config{ custom_enst_file }  if ( exists $config{ custom_enst_file } );
-$vep_forks        = $config{ vep_forks }         if ( !$vep_forks );
-$tmp_dir          = $config{ tmp_dir }           if ( !$tmp_dir && exists $config{ tmp_dir } );
-
+$custom_enst_file = $config{ custom_enst_file }  if ( defined $config{ custom_enst_file } );
+$vep_forks        = $config{ vep_forks }         if ( !defined $vep_forks );
+$tmp_dir          = $config{ tmp_dir }           if ( !defined $tmp_dir && defined $config{ tmp_dir } );
 $vep_wrap_script  = $config{ vep_wrap_script };
 $depth_col_file   = $config{ depth_def_file };
 $input_filename   = $config{ input_filename };
-$output_maf       = $config{ output_filename }   if ( !$output_maf && exists $config{ output_filename } );
-$annotated_maf    = $config{ annotated_maf }     if ( !$annotated_maf && exists $config{ annotated_maf } );
-$use_cluster      = $config{ use_cluster }       if ( !$use_cluster );
+$output_maf       = $config{ output_filename }   if ( !defined $output_maf    && defined $config{ output_filename } );
+$annotated_maf    = $config{ annotated_maf }     if ( !defined $annotated_maf && defined $config{ annotated_maf } );
+$use_cluster      = $config{ use_cluster }       if ( !defined $use_cluster   && defined $config{ use_cluster } );
 
 
 # Check VEP wrapper scripts
-( defined $maf2maf && -e $maf2maf ) or die "Error: Configuration file does not provide correct vcf2maf_script\n";
-( defined $vep_wrap_script && -e $vep_wrap_script ) or die "Error: Configuration file does not provide correct vcf2maf_script\n";
+( defined $vep_wrap_script and -e $vep_wrap_script ) or die "Error: Configuration file does not define vep_wrap_script\n";
 
 # Check TMP dir
 `mkdir -p $tmp_dir` if( defined $tmp_dir && !-e $tmp_dir );
@@ -151,13 +147,9 @@ sub AnnotateMAF {
     $vep_cmd  = "$vep_wrap_script --ref-fasta $ref_fasta --vep-path $vep_path --vep-data $vep_data --vep-forks $vep_forks --input-maf $inFile --output-maf $outFile";
     $vep_cmd .= " --custom-enst $custom_enst_file" if (defined $custom_enst_file);
     $vep_cmd .= " --tmp-dir $tmp_dir" if ( $tmp_dir );
-    if ( $vep_wrap_script !~ /maf2maf.pl/ ) {
-        $vep_cmd .= " --maf2maf $maf2maf";
-        $vep_cmd .= " --annotated-maf $annFile"  if( defined $annFile );
-    }
     $vep_cmd .= " $cols_para";
     
-    if ( lc( $use_cluster ) eq 'yes' || lc( $use_cluster ) eq 'y' ){
+    if ( defined $use_cluster and (lc( $use_cluster ) eq 'yes' || lc( $use_cluster ) eq 'y' )){
         # Submit a job to run VEP annotation
         my $NR = `wc -l < $inFile`;
         chomp $NR;
@@ -219,59 +211,54 @@ sub PreProcess {
     }
     
     # Read header line
-    my @fields = split( /\t/, `head -5 $inFile | grep -i Hugo_Symbol` );
-        
+    my @fields = split( /\t/, `head -5 $inFile | egrep -i "Hugo_Symbol|Chromosome|Tumor_Sample_Barcode"` );
+    
+    my ($idx, $chr_idx, $pos_idx, $ref_allele_idx, $tumor_allele_idx, $tumor_barcode_idx) = (0,-1,-1,-1,-1,-1);
+    foreach ( @fields ){
+        $chr_idx = $idx             if(lc($_) eq "chromosome");
+        $pos_idx = $idx             if(lc($_) eq "start_position");
+        $ref_allele_idx = $idx      if(lc($_) eq "reference_allele");
+        $tumor_allele_idx = $idx    if(lc($_) eq "tumor_seq_allele2");
+        $tumor_barcode_idx = $idx if(lc($_) eq "tumor_sample_barcode");
+        $idx++;
+    }
+    
+    if ($chr_idx==-1 or $pos_idx==-1 or $ref_allele_idx==-1 or $tumor_allele_idx==-1 or $tumor_barcode_idx==-1){
+        die "Error: The MAF file lacks necessary column (see https://github.com/mskcc/vcf2maf/blob/master/data/minimalist_test_maf.tsv)\n";
+    }
+    
     open IN,  '<', $inFile  or die "Error: Unable to open $inFile\n";
     open OUT, '>', $outFile or die "Error: Unable to create $outFile\n";
 
-    # See if essential columns are correct
-    if ( scalar( @fields ) > 10 && lc( $fields[0] ) eq "hugo_symbol" && $fields[4] && $fields[10] &&
-        lc( $fields[4] ) eq "chromosome" && lc( $fields[10] ) eq "reference_allele") {
-        # Skip illeagle mutations, correct illeagle chromosomes
-        my $misc;
-        while ( <IN> ) {
-            next if ( /^\s*$/ );
-            if (/^#|^Hugo_Symbol/){
-                print OUT $_;
-            } else {
-                my @F = split( /\t/ );
-                if( $F[4] && $F[10]!~/[0-9]/ && $F[10] ne "DELREPLACE" ){
-                    $F[4] =~ s/23/X/;
-                    $F[4] =~ s/24/Y/;
-                    print OUT join( "\t", @F );
-                } else {
-                    $misc = $misc ? $misc . $_ : $_;
-                }
-            }
-        }
-    
-        # Move illeagle mutations into $outFile.misc
-        if ($misc) {
-            open  MOUT, '>', $miscFile or die "Error: Unable to create $miscFile\n";
-            print MOUT $misc;
-            close MOUT;
-        }
-    } else {
-        print "Nonstandard MAF format: $preInFile\n";
+    my $misc;
+    while ( <IN> ) {
+        next if ( /^\s*$/ );
+        if (/^#|^Hugo_Symbol|^Chromosome|^Tumor_Sample_Barcode/i){
+            print OUT $_;
+        } else {
+            my @F = split( /\t/ );
         
-        # If Hugo_Symbol is not the first column
-        my $n = -1;
-        foreach ( @fields ){
-            $n++;
-            last if( /Hugo_Symbol/i );
-        }
-        
-        # Copy original file to out file
-        while ( <IN> ) {
-            next if ( /^\s*$/ );
-            if (/^#/ || $n <= 0){
-                print OUT $_;
+            if( defined $F[$chr_idx] and
+                defined $F[$pos_idx] and
+                defined $F[$ref_allele_idx] and
+                defined $F[$tumor_allele_idx] and
+                defined $F[$tumor_barcode_idx]){
+                $F[$chr_idx] =~ s/23/X/;
+                $F[$chr_idx] =~ s/24/Y/;
+                print OUT join( "\t", @F );
             } else {
-                my @F = split( /\t/ );
-                print OUT $F[$n]."\t".join("\t",@F[0..($n-1)])."\t".join("\t",@F[($n+1)..(scalar(@F) - 1)]);
+                $misc = $misc ? $misc . $_ : $_;
             }
         }
     }
+
+    # Move illeagle mutations into $outFile.misc
+    if (defined $misc) {
+        open  MOUT, '>', $miscFile or die "Error: Unable to create $miscFile\n";
+        print MOUT $misc;
+        close MOUT;
+    }
+
     close IN;
     close OUT;
 
@@ -285,7 +272,7 @@ sub PreProcess {
 sub GetColsToRetain {
     my $myMAF = shift;
 
-    my $ret = `head -5 $myMAF | grep -i Hugo_Symbol`;
+    my $ret = `head -5 $myMAF | egrep -i "Hugo_Symbol|Chromosome|Tumor_Sample_Barcode"`;
     chomp $ret;
     return '' if ( !defined $ret );
 
@@ -296,13 +283,12 @@ sub GetColsToRetain {
     
     foreach ( @columns ){
         next if ( /ONCOTATOR/i );
-        next if ( $_ eq 'Hugo_Symbol' || $_ eq 'Entrez_Gene_Id' || $_ eq 'Chromosome' || $_ eq 'Start_Position' || $_ eq 'End_Position' || $_ eq 'NCBI_Build' || $_ eq 'Variant_Classification' || $_ eq 'Variant_Type' );
+        next if ( /Hugo_Symbol/i or /Entrez_Gene_Id/i or /Chromosome/i or /Start_Position/i or /End_Position/i or /NCBI_Build/i or /Variant_Classification/i or /Variant_Type/i );
         
         if ( exists $depth_cols{$_} ){
             $cols2keep = '--'.$depth_cols{ $_ }.' '.$_.' '.$cols2keep;
         }else{
             #s/ |\(|\)/_/g;
-
             if( $cnt==0 ){
                 $cols2keep .= " \"$_";
                 $cnt++;
