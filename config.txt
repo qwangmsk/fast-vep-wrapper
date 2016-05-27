@@ -1,5 +1,5 @@
 ###########################################################################
-# Variables used to run vcf2maf. Both fast-vep-wrapper.pl and run-vep-wrapper.pl read this section
+# Variables used to run vcf2maf. 
 
 vep_path         = /opt/common/CentOS_6/vep/v82
 vep_data         = /opt/common/CentOS_6/vep/v82
